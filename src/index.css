@@ -1,0 +1,209 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-bg-luxury: #040408;
+  --color-surface-dark: #0A0A12;
+  --color-primary: #A855F7;
+  --color-accent: #EC4899;
+  --color-card-dark: rgba(10, 10, 18, 0.55);
+  --color-border-glass: rgba(255, 255, 255, 0.08);
+  --color-border-glass-active: rgba(168, 85, 247, 0.4);
+
+  --font-sans: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Outfit", "Plus Jakarta Sans", sans-serif;
+
+  --animate-glow-pulse: glow-pulse 4s infinite ease-in-out;
+  --animate-float: float 8s infinite ease-in-out;
+  --animate-shine: shine 3s infinite linear;
+  --animate-shimmer: shimmer 2s infinite linear;
+  
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 24px rgba(168, 85, 247, 0.15); }
+    50% { box-shadow: 0 0 40px rgba(236, 72, 153, 0.3); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-10px) rotate(0.5deg); }
+  }
+  @keyframes shine {
+    from { background-position: 200% center; }
+    to { background-position: -200% center; }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #040408;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.45);
+}
+
+/* Global Selection & Focus ring standards */
+::selection {
+  background-color: rgba(168, 85, 247, 0.35);
+  color: #ffffff;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(168, 85, 247, 0.8);
+  outline-offset: 2px;
+}
+
+body {
+  background-color: var(--color-bg-luxury);
+  color: #FFFFFF;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography Hierarchy */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+/* UI UX Pro Max - Liquid Glass Panel */
+.glass-panel {
+  background: rgba(10, 10, 18, 0.55);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.7),
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-panel-interactive {
+  background: rgba(12, 12, 22, 0.55);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.6),
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-panel-interactive:hover {
+  background: rgba(18, 18, 32, 0.7);
+  border-color: rgba(168, 85, 247, 0.35);
+  box-shadow: 0 24px 60px -12px rgba(168, 85, 247, 0.18),
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Input Fields - Linear/Stripe style */
+.glass-input {
+  background: rgba(15, 15, 26, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #FFFFFF;
+  border-radius: 16px;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.glass-input:focus {
+  outline: none;
+  border-color: rgba(168, 85, 247, 0.6);
+  background: rgba(20, 20, 36, 0.8);
+  box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.15),
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Glowing Spotlights background */
+.luxury-bg-glow {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background: #040408;
+}
+
+.glow-spot-1 {
+  position: absolute;
+  top: -15%;
+  left: -15%;
+  width: 65%;
+  height: 65%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, transparent 70%);
+  filter: blur(120px);
+  animation: float 14s infinite ease-in-out alternate;
+}
+
+.glow-spot-2 {
+  position: absolute;
+  bottom: -15%;
+  right: -15%;
+  width: 65%;
+  height: 65%;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.1) 0%, transparent 70%);
+  filter: blur(120px);
+  animation: float 16s infinite ease-in-out alternate-reverse;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #FFFFFF 20%, #C084FC 60%, #F472B6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Premium Border Glow */
+.premium-border-glow {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08),
+              0 1px 3px rgba(0, 0, 0, 0.3),
+              0 4px 16px rgba(168, 85, 247, 0.15);
+}
+
+.premium-border-glow:hover {
+  box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.4),
+              0 2px 6px rgba(0, 0, 0, 0.4),
+              0 8px 30px rgba(236, 72, 153, 0.25);
+}
+
+/* Shimmer Loading animation helper */
+.shimmer-bg {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite linear;
+}
+
+/* Accessibility - Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
