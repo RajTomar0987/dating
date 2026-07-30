@@ -1,9 +1,9 @@
 import React from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { 
-  Heart, Sparkles, MessageCircle, ShieldAlert, User, Sliders, Shield, 
-  Calendar, Activity, Bot, BarChart3, Lock, BookOpen, Target, 
-  ShoppingBag, Gift, Users, Code, Building2, Cpu, Play
+  Heart, Sparkles, Activity, Shield, Calendar, Bot, BarChart3, Lock, 
+  BookOpen, Target, ShoppingBag, Gift, Users, Code, Building2, Cpu, 
+  Play, Brain, ShieldCheck
 } from 'lucide-react';
 import Badge from './Badge';
 
@@ -11,15 +11,20 @@ export default function Sidebar() {
   const { activeTab, setActiveTab, userProfile, isPremiumUser, startDemoMode } = useAppStore();
 
   const ecosystemItems = [
+    { id: 'command', name: 'Command Center', icon: Cpu, badge: 'AI Core' },
     { id: 'home', name: 'Live Dashboard', icon: Activity, badge: 'Live' },
     { id: 'companion', name: 'Aura Companion', icon: Bot, badge: 'Flagship' },
     { id: 'deck', name: 'Aura Discover', icon: Heart },
+    { id: 'calendar', name: 'Smart Calendar', icon: Calendar },
+    { id: 'emotion', name: 'Emotion Analysis', icon: Brain },
+    { id: 'communities', name: 'Communities', icon: Users },
+    { id: 'safety', name: 'Safety & Privacy', icon: ShieldCheck },
     { id: 'planner', name: 'Aura Date Planner', icon: Calendar },
     { id: 'memories', name: 'Aura Memories', icon: Sparkles },
     { id: 'goals', name: 'Aura Goals', icon: Target },
     { id: 'wellness', name: 'Aura Wellness', icon: Activity },
     { id: 'journal', name: 'Aura Journal', icon: BookOpen },
-    { id: 'coach', name: 'Aura Coach', icon: ShieldAlert },
+    { id: 'coach', name: 'Aura Coach', icon: Activity },
     { id: 'avatar', name: 'Aura Avatar', icon: Sparkles, badge: 'Level 4' },
     { id: 'premium', name: 'AuraAI Pro+', icon: Shield, highlight: true }
   ];
@@ -41,10 +46,10 @@ export default function Sidebar() {
   ];
 
   const mobileItems = [
+    { id: 'command', name: 'Command', icon: Cpu },
     { id: 'companion', name: 'Companion', icon: Bot },
     { id: 'deck', name: 'Discover', icon: Heart },
-    { id: 'planner', name: 'Planner', icon: Calendar },
-    { id: 'memories', name: 'Memories', icon: Sparkles },
+    { id: 'calendar', name: 'Calendar', icon: Calendar },
     { id: 'wellness', name: 'Wellness', icon: Activity }
   ];
 
@@ -56,10 +61,10 @@ export default function Sidebar() {
           {/* Logo Brand Header */}
           <div 
             className="flex items-center justify-between cursor-pointer group px-2 py-1 rounded-2xl hover:bg-white/[0.03] transition-colors" 
-            onClick={() => setActiveTab('landing')}
+            onClick={() => setActiveTab('command')}
             role="button"
             tabIndex={0}
-            aria-label="Go to AuraAI Home"
+            aria-label="Go to AuraAI Command Center"
           >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary via-purple-600 to-accent flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.4)] group-hover:scale-105 transition-transform shrink-0">
@@ -70,7 +75,7 @@ export default function Sidebar() {
                   AURA<span className="gradient-text">AI</span>
                 </span>
                 <span className="text-[9px] text-accent font-mono uppercase tracking-widest mt-0.5">
-                  Platform v3.0
+                  Autonomous v3.0
                 </span>
               </div>
             </div>
@@ -88,7 +93,7 @@ export default function Sidebar() {
           {/* Section 1: Ecosystem Modules */}
           <div className="space-y-1">
             <div className="text-[10px] font-mono uppercase text-white/40 px-3 font-semibold tracking-wider">
-              ECOSYSTEM MODULES
+              AUTONOMOUS ECOSYSTEM
             </div>
             <nav className="flex flex-col gap-0.5" aria-label="Ecosystem Navigation">
               {ecosystemItems.map(item => {

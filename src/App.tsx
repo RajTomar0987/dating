@@ -2,6 +2,11 @@ import React, { useEffect } from 'react';
 import { useAppStore } from './store/useAppStore';
 import Landing from './pages/Landing';
 import LiveHomeDashboard from './pages/LiveHomeDashboard';
+import AuraCommandCenter from './pages/AuraCommandCenter';
+import SmartCalendar from './pages/SmartCalendar';
+import EmotionAnalysis from './pages/EmotionAnalysis';
+import Communities from './pages/Communities';
+import SafetyCenter from './pages/SafetyCenter';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import SwipeDeck from './pages/SwipeDeck';
@@ -147,7 +152,12 @@ export default function App() {
             <InvestorVision />
           ) : (
             <>
+              {activeTab === 'command' && <AuraCommandCenter />}
               {(activeTab === 'home' || activeTab === 'dashboard') && <LiveHomeDashboard />}
+              {activeTab === 'calendar' && <SmartCalendar />}
+              {activeTab === 'emotion' && <EmotionAnalysis />}
+              {activeTab === 'communities' && <Communities />}
+              {activeTab === 'safety' && <SafetyCenter />}
               {activeTab === 'landing' && <Landing />}
               {activeTab === 'login' && <Login />}
               {activeTab === 'signup' && <Signup />}
