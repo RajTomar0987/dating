@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "start": "vite preview",
     "lint": "oxlint",
     "preview": "vite preview",
     "server:dev": "npm --prefix server run dev",
-    "server:build": "npm --prefix server run build"
+    "server:build": "npm --prefix server run build",
+    "server:start": "npm --prefix server run start"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
