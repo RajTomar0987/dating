@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useAppStore } from './store/useAppStore';
 import Landing from './pages/Landing';
+import LiveHomeDashboard from './pages/LiveHomeDashboard';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import SwipeDeck from './pages/SwipeDeck';
@@ -34,11 +35,16 @@ import InvestorVision from './pages/InvestorVision';
 import InvestorStoryTour from './components/InvestorStoryTour';
 import DemoDayMode from './components/DemoDayMode';
 import PresenterTour from './components/PresenterTour';
+import DynamicIsland from './components/DynamicIsland';
+import SampleCommunityBanner from './components/SampleCommunityBanner';
+import ParticleBg from './components/ParticleBg';
+import AIAssistantDock from './components/AIAssistantDock';
+import SmartSearch from './components/SmartSearch';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, MessageCircle, Heart, Shield, X } from 'lucide-react';
 
 const LIVE_NOTIFICATIONS = [
-  { text: "Affinity match established with Zoe Hayashi (92% compatibility)!", type: "match" as const },
+  { text: "Affinity match established with Zoe Hayashi (98% compatibility)!", type: "match" as const },
   { text: "Someone liked your profile signature in Oakland.", type: "like" as const },
   { text: "AI Wingman finished analyzing your latest chat transcript.", type: "system" as const },
   { text: "New message received from Elena: 'Check the model sync logs.'", type: "chat" as const },
@@ -70,8 +76,21 @@ export default function App() {
   }, [activeTab, isDemoMode, addToast]);
 
   return (
-    <div className="min-h-screen bg-bg-luxury text-white relative font-sans selection:bg-primary/30">
+    <div className="min-h-screen bg-bg-luxury text-white relative font-sans selection:bg-primary/30 perspective-1200">
       
+      {/* 3D Depth Canvas Background */}
+      <ParticleBg />
+
+      {/* Top Announcement Banner for Sample Mode */}
+      <SampleCommunityBanner />
+
+      {/* Apple Dynamic Island Floating Header */}
+      {!isDemoMode && activeTab !== 'landing' && <DynamicIsland />}
+
+      {/* Global AI Assistant Floating Dock & Cmd+K Smart Search */}
+      {!isDemoMode && <AIAssistantDock />}
+      {!isDemoMode && <SmartSearch />}
+
       {/* Absolute Toast Notifications Overlay */}
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 w-80 pointer-events-none">
         <AnimatePresence>
@@ -117,10 +136,10 @@ export default function App() {
       <AnimatePresence mode="wait">
         <motion.div
           key={isAdminUrl ? 'admin' : isVisionUrl ? 'vision' : activeTab}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          initial={{ opacity: 0, y: 12, filter: 'blur(4px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          exit={{ opacity: 0, y: -12, filter: 'blur(4px)' }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         >
           {isAdminUrl || activeTab === 'admin' ? (
             <AdminDashboard />
@@ -128,6 +147,7 @@ export default function App() {
             <InvestorVision />
           ) : (
             <>
+              {(activeTab === 'home' || activeTab === 'dashboard') && <LiveHomeDashboard />}
               {activeTab === 'landing' && <Landing />}
               {activeTab === 'login' && <Login />}
               {activeTab === 'signup' && <Signup />}

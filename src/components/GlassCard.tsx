@@ -12,6 +12,7 @@ interface GlassCardProps {
   transition?: any;
   role?: string;
   ariaLabel?: string;
+  enable3DTilt?: boolean;
 }
 
 export default function GlassCard({ 
@@ -24,7 +25,8 @@ export default function GlassCard({
   initial,
   transition,
   role,
-  ariaLabel
+  ariaLabel,
+  enable3DTilt = true
 }: GlassCardProps) {
 
   const getVariantStyles = () => {
@@ -49,21 +51,26 @@ export default function GlassCard({
       tabIndex={onClick ? 0 : undefined}
       initial={initial}
       animate={animate}
-      transition={transition || { duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      transition={transition || { duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       whileHover={hoverEffect ? { 
-        y: -3, 
-        borderColor: 'rgba(168, 85, 247, 0.35)', 
-        backgroundColor: 'rgba(16, 16, 28, 0.7)',
-        boxShadow: '0 20px 45px -10px rgba(168, 85, 247, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.12)'
+        rotateX: enable3DTilt ? 4 : 0, 
+        rotateY: enable3DTilt ? -6 : 0, 
+        z: enable3DTilt ? 20 : 0,
+        borderColor: 'rgba(168, 85, 247, 0.4)', 
+        backgroundColor: 'rgba(16, 16, 28, 0.75)',
+        boxShadow: '0 30px 60px -15px rgba(168, 85, 247, 0.25), 0 0 30px rgba(236, 72, 153, 0.2)'
       } : undefined}
-      whileTap={onClick ? { scale: 0.99 } : undefined}
+      whileTap={onClick ? { scale: 0.98 } : undefined}
       className={`
-        rounded-[24px] border overflow-hidden transition-all duration-300
+        rounded-3xl border transition-colors relative overflow-hidden preserve-3d perspective-1200
         ${getVariantStyles()}
-        ${onClick ? 'cursor-pointer focus-visible:outline-2 focus-visible:outline-primary' : ''} 
+        ${onClick ? 'cursor-pointer' : ''}
         ${className}
       `}
     >
+      {/* Specular Light Accent Reflection */}
+      <div className="absolute -top-24 -left-24 w-48 h-48 bg-gradient-to-br from-white/10 to-transparent rounded-full filter blur-xl pointer-events-none" />
+      
       {children}
     </motion.div>
   );

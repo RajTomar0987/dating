@@ -19,13 +19,23 @@ export interface CompatibilityReport {
 export interface Profile {
   id: string;
   name: string;
+  first_name?: string;
   age: number;
+  city?: string;
+  profession?: string;
   occupation: string;
   location: string;
   bio: string;
   interests: string[];
   images: string[];
   personalityType: string;
+  personality_type?: string;
+  relationship_goal?: string;
+  compatibility_score?: number;
+  last_active?: 'Online now' | '3 min ago' | '10 min ago' | '1 hour ago' | 'Yesterday' | string;
+  verified?: boolean;
+  premium?: boolean;
+  sampleAccount?: boolean;
   loveLanguage: string;
   lifestyle: string[];
   music: string[];

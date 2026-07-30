@@ -11,6 +11,7 @@ export default function Sidebar() {
   const { activeTab, setActiveTab, userProfile, isPremiumUser, startDemoMode } = useAppStore();
 
   const ecosystemItems = [
+    { id: 'home', name: 'Live Dashboard', icon: Activity, badge: 'Live' },
     { id: 'companion', name: 'Aura Companion', icon: Bot, badge: 'Flagship' },
     { id: 'deck', name: 'Aura Discover', icon: Heart },
     { id: 'planner', name: 'Aura Date Planner', icon: Calendar },
