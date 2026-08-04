@@ -4,7 +4,7 @@ interface BadgeProps {
   children: React.ReactNode;
   variant?: 'primary' | 'accent' | 'glass' | 'success' | 'warning' | 'outline';
   size?: 'sm' | 'md' | 'lg';
-  icon?: React.ElementType;
+  icon?: React.ComponentType<{ size?: number; className?: string }> | any;
   className?: string;
 }
 

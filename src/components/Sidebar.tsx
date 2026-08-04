@@ -3,18 +3,18 @@ import { useAppStore } from '../store/useAppStore';
 import { 
   Heart, Sparkles, Activity, Shield, Calendar, Bot, BarChart3, Lock, 
   BookOpen, Target, ShoppingBag, Gift, Users, Code, Building2, Cpu, 
-  Play, Brain, ShieldCheck
+  Play, Brain, ShieldCheck, MessageCircle
 } from 'lucide-react';
 import Badge from './Badge';
 
 export default function Sidebar() {
-  const { activeTab, setActiveTab, userProfile, isPremiumUser, startDemoMode } = useAppStore();
+  const { activeTab, setActiveTab, userProfile, isPremiumUser } = useAppStore();
 
   const ecosystemItems = [
-    { id: 'command', name: 'Command Center', icon: Cpu, badge: 'AI Core' },
+    { id: 'companion', name: 'Aura Companion', icon: Bot, badge: 'Flagship AI' },
     { id: 'home', name: 'Live Dashboard', icon: Activity, badge: 'Live' },
-    { id: 'companion', name: 'Aura Companion', icon: Bot, badge: 'Flagship' },
     { id: 'deck', name: 'Aura Discover', icon: Heart },
+    { id: 'chats', name: 'Chats', icon: MessageCircle, badge: 'Live' },
     { id: 'calendar', name: 'Smart Calendar', icon: Calendar },
     { id: 'emotion', name: 'Emotion Analysis', icon: Brain },
     { id: 'communities', name: 'Communities', icon: Users },
@@ -46,9 +46,10 @@ export default function Sidebar() {
   ];
 
   const mobileItems = [
-    { id: 'command', name: 'Command', icon: Cpu },
     { id: 'companion', name: 'Companion', icon: Bot },
+    { id: 'home', name: 'Dashboard', icon: Activity },
     { id: 'deck', name: 'Discover', icon: Heart },
+    { id: 'chats', name: 'Chats', icon: MessageCircle },
     { id: 'calendar', name: 'Calendar', icon: Calendar },
     { id: 'wellness', name: 'Wellness', icon: Activity }
   ];
@@ -61,7 +62,7 @@ export default function Sidebar() {
           {/* Logo Brand Header */}
           <div 
             className="flex items-center justify-between cursor-pointer group px-2 py-1 rounded-2xl hover:bg-white/[0.03] transition-colors" 
-            onClick={() => setActiveTab('command')}
+            onClick={() => setActiveTab('companion')}
             role="button"
             tabIndex={0}
             aria-label="Go to AuraAI Command Center"
@@ -80,15 +81,6 @@ export default function Sidebar() {
               </div>
             </div>
           </div>
-
-          {/* Quick Presenter Mode Button */}
-          <button
-            onClick={startDemoMode}
-            className="w-full px-3 py-2 rounded-xl bg-gradient-to-r from-accent/20 to-primary/20 border border-accent/40 text-xs font-bold text-white flex items-center justify-center gap-2 hover:shadow-[0_0_20px_rgba(236,72,153,0.3)] transition-all cursor-pointer"
-          >
-            <Play size={13} className="fill-white" />
-            <span>Present AuraAI (5 Min)</span>
-          </button>
 
           {/* Section 1: Ecosystem Modules */}
           <div className="space-y-1">

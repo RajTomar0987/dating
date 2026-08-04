@@ -39,7 +39,6 @@ function CountUp({ end, duration = 2, suffix = '', decimals = 0 }: { end: number
 
 export default function Landing() {
   const setActiveTab = useAppStore((state) => state.setActiveTab);
-  const startDemoMode = useAppStore((state) => state.startDemoMode);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
   const toggleFaq = (index: number) => {
@@ -262,8 +261,8 @@ export default function Landing() {
               <GlowButton onClick={() => setActiveTab('signup')} icon={ArrowRight} size="lg">
                 Get Started
               </GlowButton>
-              <GlowButton variant="secondary" onClick={startDemoMode} icon={Play} size="lg">
-                Start Guided Demo
+              <GlowButton variant="secondary" onClick={() => setActiveTab('deck')} icon={Play} size="lg">
+                Explore Discover Deck
               </GlowButton>
             </motion.div>
           </div>

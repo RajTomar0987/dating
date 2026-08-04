@@ -1,498 +1,895 @@
-import React, { useState, useEffect } from 'react';
-import { motion, useMotionValue, useTransform, useAnimation, AnimatePresence } from 'framer-motion';
+import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Heart, X, Star, RotateCcw, Sparkles, MapPin, Briefcase, 
-  Check, AlertTriangle, Gift, Calendar, Compass
+  Search, Mic, Sparkles, Heart, MessageCircle, Eye, ShieldCheck, MapPin, 
+  Flame, Calendar, Music, Coffee, Film, Compass, Users, Volume2, Pause, 
+  Play, X, Star, ArrowUpRight, Filter, ChevronRight, Zap, Bookmark, 
+  Award, Globe, CheckCircle2, User
 } from 'lucide-react';
-import { useAppStore } from '../store/useAppStore';
-import type { Profile } from '../data/mockData';
-import GlassCard from '../components/GlassCard';
-import GlowButton from '../components/GlowButton';
 import Sidebar from '../components/Sidebar';
-import Badge from '../components/Badge';
-import EmptyState from '../components/EmptyState';
-import Modal from '../components/Modal';
+import ParticleBg from '../components/ParticleBg';
+import { useAppStore } from '../store/useAppStore';
+import {
+  CATEGORIES,
+  DISCOVER_FEED,
+  NEARBY_MAP_PINS,
+  AI_SUGGESTIONS
+} from '../data/discoverData';
+import type {
+  ProfileDiscoverCard,
+  ReelDiscoverCard,
+  PlaceEventDiscoverCard,
+  CommunityDiscoverCard,
+  AIRecommendationDiscoverCard,
+  MapPin as MapPinType
+} from '../data/discoverData';
 
-export default function SwipeDeck() {
-  const { 
-    profiles, 
-    userProfile, 
-    likeProfile, 
-    setActiveTab,
-    setSelectedMatchId,
-    setViewingReportProfileId
-  } = useAppStore();
+// ----------------------------------------------------
+// 3D TILT CONTAINER
+// ----------------------------------------------------
+interface TiltProps {
+  children: React.ReactNode;
+  className?: string;
+}
 
-  const [currentIndex, setCurrentIndex] = useState(1);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [matchCelebration, setMatchCelebration] = useState<Profile | null>(null);
-  const [history, setHistory] = useState<number[]>([]);
+const Tilt: React.FC<TiltProps> = ({ children, className = '' }) => {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [rotateX, setRotateX] = useState(0);
+  const [rotateY, setRotateY] = useState(0);
 
-  // Motion values for swiping
-  const motionX = useMotionValue(0);
-  const motionY = useMotionValue(0);
-  const cardControls = useAnimation();
-
-  // Overlay mappings
-  const rotate = useTransform(motionX, [-300, 300], [-30, 30]);
-  const likeOpacity = useTransform(motionX, [0, 150], [0, 1]);
-  const passOpacity = useTransform(motionX, [-150, 0], [1, 0]);
-  const superLikeOpacity = useTransform(motionY, [-150, 0], [1, 0]);
-
-  const currentProfile = profiles[currentIndex];
-
-  useEffect(() => {
-    setActiveImageIndex(0);
-  }, [currentIndex]);
-
-  const triggerSwipe = async (direction: 'left' | 'right' | 'up') => {
-    if (!currentProfile) return;
-
-    if (direction === 'left') {
-      await cardControls.start({ x: -600, opacity: 0, rotate: -35, transition: { duration: 0.3 } });
-      handleSwipeComplete(false);
-    } else if (direction === 'right') {
-      await cardControls.start({ x: 600, opacity: 0, rotate: 35, transition: { duration: 0.3 } });
-      handleSwipeComplete(true);
-    } else if (direction === 'up') {
-      await cardControls.start({ y: -700, opacity: 0, scale: 0.85, transition: { duration: 0.3 } });
-      handleSwipeComplete(true, true);
-    }
-  };
-
-  const handleSwipeComplete = (liked: boolean, superLiked: boolean = false) => {
-    if (!currentProfile) return;
-
-    setHistory(prev => [...prev, currentIndex]);
-
-    if (liked || superLiked) {
-      likeProfile(currentProfile.id);
-      if (Math.random() < 0.85) {
-        setMatchCelebration(currentProfile);
-      } else {
-        advanceDeck();
-      }
-    } else {
-      advanceDeck();
-    }
-  };
-
-  const advanceDeck = () => {
-    motionX.set(0);
-    motionY.set(0);
-    cardControls.set({ x: 0, y: 0, opacity: 1, rotate: 0, scale: 1 });
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
     
-    if (currentIndex < profiles.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    } else {
-      setCurrentIndex(profiles.length);
-    }
-  };
-
-  const handleUndo = async () => {
-    if (history.length === 0) return;
-    const previousIndex = history[history.length - 1];
-    setHistory(prev => prev.slice(0, -1));
+    const rX = ((mouseY - height / 2) / (height / 2)) * -8;
+    const rY = ((mouseX - width / 2) / (width / 2)) * 8;
     
-    cardControls.set({ x: -600, opacity: 0, rotate: -35 });
-    setCurrentIndex(previousIndex);
-    await cardControls.start({ x: 0, opacity: 1, rotate: 0, transition: { duration: 0.4, type: 'spring' } });
+    setRotateX(rX);
+    setRotateY(rY);
   };
 
-  const handleDragEnd = async (_: any, info: any) => {
-    const swipeThresholdX = 130;
-    const swipeThresholdY = -110;
-
-    if (info.offset.x > swipeThresholdX) {
-      triggerSwipe('right');
-    } else if (info.offset.x < -swipeThresholdX) {
-      triggerSwipe('left');
-    } else if (info.offset.y < swipeThresholdY) {
-      triggerSwipe('up');
-    } else {
-      cardControls.start({ x: 0, y: 0, rotate: 0, transition: { type: 'spring', stiffness: 220, damping: 20 } });
-    }
-  };
-
-  const nextImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!currentProfile) return;
-    setActiveImageIndex(prev => (prev + 1) % currentProfile.images.length);
-  };
-
-  const prevImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!currentProfile) return;
-    setActiveImageIndex(prev => (prev - 1 + currentProfile.images.length) % currentProfile.images.length);
+  const handleMouseLeave = () => {
+    setRotateX(0);
+    setRotateY(0);
   };
 
   return (
-    <div className="flex min-h-screen bg-bg-luxury">
+    <motion.div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      animate={{ rotateX, rotateY, transformPerspective: 1000 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      style={{ transformStyle: 'preserve-3d' }}
+      className={`relative ${className}`}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+// ----------------------------------------------------
+// MAIN DISCOVER PAGE COMPONENT
+// ----------------------------------------------------
+export default function SwipeDeck() {
+  const { setActiveTab, setSelectedMatchId, addToast } = useAppStore();
+
+  // Search & Filter States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [isVoiceListening, setIsVoiceListening] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiPromptInput, setAiPromptInput] = useState('');
+
+  // Quick Preview State
+  const [previewProfile, setPreviewProfile] = useState<ProfileDiscoverCard | null>(null);
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+
+  // Active Map Pin Selection
+  const [selectedMapPin, setSelectedMapPin] = useState<MapPinType | null>(NEARBY_MAP_PINS[0]);
+
+  // Social Interaction States
+  const [likedMap, setLikedMap] = useState<Record<string, boolean>>({});
+  const [activeReelPlaying, setActiveReelPlaying] = useState<string | null>(null);
+
+  // Filter feed by search query & category
+  const filteredFeed = DISCOVER_FEED.filter(item => {
+    const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
+    if (!searchQuery.trim()) return matchesCategory;
+
+    const query = searchQuery.toLowerCase();
+    if (item.type === 'profile') {
+      return matchesCategory && (
+        item.name.toLowerCase().includes(query) ||
+        item.occupation.toLowerCase().includes(query) ||
+        item.interests.some(i => i.toLowerCase().includes(query))
+      );
+    }
+    if (item.type === 'reel') {
+      return matchesCategory && (
+        item.creatorName.toLowerCase().includes(query) ||
+        item.caption.toLowerCase().includes(query)
+      );
+    }
+    if (item.type === 'experience') {
+      return matchesCategory && (
+        item.title.toLowerCase().includes(query) ||
+        item.categoryName.toLowerCase().includes(query)
+      );
+    }
+    if (item.type === 'community') {
+      return matchesCategory && (
+        item.name.toLowerCase().includes(query) ||
+        item.recentDiscussion.toLowerCase().includes(query)
+      );
+    }
+    return matchesCategory;
+  });
+
+  // Voice Search Simulation
+  const toggleVoiceSearch = () => {
+    setIsVoiceListening(true);
+    addToast('🎙️ AI Listening... Say "Show coffee lovers in San Francisco"', 'system');
+    setTimeout(() => {
+      setIsVoiceListening(false);
+      setSearchQuery('Coffee');
+      setActiveCategory('coffee');
+      addToast('Filtered feed by Voice Query: Coffee', 'system');
+    }, 3000);
+  };
+
+  const handleAiSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiPromptInput.trim()) return;
+    setSearchQuery(aiPromptInput);
+    setShowAiModal(false);
+    addToast(`🤖 AI Prompt Synced: "${aiPromptInput}"`, 'system');
+    setAiPromptInput('');
+  };
+
+  const handleLikeItem = (id: string, name: string) => {
+    const isLiked = !likedMap[id];
+    setLikedMap(prev => ({ ...prev, [id]: isLiked }));
+    if (isLiked) {
+      addToast(`Sent a secret crush heart to ${name}! ✨`, 'match');
+    }
+  };
+
+  const toggleVoiceNote = (id: string) => {
+    if (playingVoiceId === id) {
+      setPlayingVoiceId(null);
+    } else {
+      setPlayingVoiceId(id);
+      addToast('Playing 28s Voice Intro preview...', 'chat');
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen bg-[#04040A] text-white font-sans relative overflow-x-hidden selection:bg-pink-500/30 selection:text-pink-200">
+      
+      {/* Dynamic Ambient Background */}
+      <ParticleBg />
+      
+      <div className="fixed top-[-10%] left-[-5%] w-[600px] h-[600px] bg-purple-900/15 rounded-full blur-[160px] pointer-events-none z-0" />
+      <div className="fixed top-[40%] right-[-10%] w-[500px] h-[500px] bg-pink-900/15 rounded-full blur-[150px] pointer-events-none z-0" />
+      <div className="fixed bottom-[-10%] left-[20%] w-[550px] h-[550px] bg-cyan-900/15 rounded-full blur-[140px] pointer-events-none z-0" />
+
+      {/* Sidebar Navigation */}
       <Sidebar />
 
-      <main className="flex-1 ml-0 md:ml-64 p-4 md:p-8 pb-24 md:pb-8 grid grid-cols-12 gap-6 md:gap-8 items-start relative z-10 max-w-7xl mx-auto">
+      {/* Main Viewport Content */}
+      <main className="flex-1 ml-0 md:ml-64 p-4 md:p-8 pb-32 md:pb-16 max-w-7xl mx-auto space-y-12 relative z-10 overflow-x-hidden">
         
-        {/* Match Celebration Modal */}
-        <Modal 
-          isOpen={!!matchCelebration} 
-          onClose={() => setMatchCelebration(null)}
-          title="It's a Neural Match!"
-        >
-          {matchCelebration && (
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center mx-auto mb-4 text-accent shadow-[0_0_30px_rgba(236,72,153,0.4)]">
-                <Sparkles size={32} className="animate-spin" />
+        {/* ====================================================
+            SECTION 1: HERO SEARCH BAR WITH VOICE & AI PROMPTS
+            ==================================================== */}
+        <section className="relative rounded-3xl p-6 md:p-10 bg-gradient-to-br from-white/[0.06] via-purple-950/20 to-black/80 border border-white/12 backdrop-blur-2xl shadow-2xl space-y-6">
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300 text-xs font-mono font-bold uppercase mb-2">
+                <Compass size={14} className="animate-spin" style={{ animationDuration: '8s' }} />
+                Spatial Social Discovery Feed
               </div>
-              
-              <h2 className="text-2xl font-display font-bold text-white mb-2">
-                Frequency Alignment: <span className="gradient-text">{matchCelebration.compatibilityReport.overall}%</span>
-              </h2>
-              <p className="text-xs text-white/60 mb-6">
-                Your neural traits and behavioral values are strongly synchronized.
+              <h1 className="text-3xl md:text-5xl font-display font-black text-white tracking-tight">
+                Explore The Aura Universe
+              </h1>
+              <p className="text-xs md:text-sm text-white/60 mt-1 font-light">
+                Discover people, 10-second reels, coffee spots, music events, and active communities nearby.
               </p>
-              
-              <div className="flex items-center justify-center gap-6 mb-6">
-                <div className="flex flex-col items-center">
-                  <div className="w-18 h-18 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xl font-bold text-white shadow-lg">
-                    {userProfile.name.charAt(0)}
-                  </div>
-                  <span className="text-xs text-white/50 mt-2">{userProfile.name}</span>
-                </div>
-                
-                <div className="flex flex-col items-center">
-                  <Heart className="text-accent fill-accent animate-pulse" size={28} />
-                </div>
+            </div>
 
-                <div className="flex flex-col items-center">
-                  <img 
-                    src={matchCelebration.images[0]} 
-                    alt={matchCelebration.name} 
-                    className="w-18 h-18 rounded-full object-cover border border-white/20 shadow-lg"
-                  />
-                  <span className="text-xs text-white/50 mt-2">{matchCelebration.name}</span>
-                </div>
-              </div>
-
-              <div className="bg-white/5 border border-white/8 rounded-2xl p-4 italic text-xs text-white/80 mb-6 leading-relaxed">
-                "{matchCelebration.compatibilityReport.summary}"
-              </div>
-
-              <div className="flex gap-3">
-                <GlowButton 
-                  className="flex-1"
-                  onClick={() => {
-                    setSelectedMatchId(matchCelebration.id);
-                    setMatchCelebration(null);
-                    setActiveTab('chats');
-                  }}
-                >
-                  Start Chat Now
-                </GlowButton>
-                <GlowButton 
-                  variant="secondary" 
-                  className="flex-1"
-                  onClick={() => {
-                    setMatchCelebration(null);
-                    advanceDeck();
-                  }}
-                >
-                  Keep Swiping
-                </GlowButton>
+            {/* Quick Stats Pill */}
+            <div className="flex items-center gap-3">
+              <div className="px-4 py-2 rounded-2xl bg-white/[0.04] border border-white/10 text-right backdrop-blur-md">
+                <span className="text-xs font-mono text-emerald-400 font-bold block">🟢 1,420 Active</span>
+                <span className="text-[10px] text-white/50">San Francisco & Bay Area</span>
               </div>
             </div>
-          )}
-        </Modal>
+          </div>
 
-        {/* Center Swipe Card */}
-        <div className="col-span-12 lg:col-span-7 flex flex-col items-center gap-6">
-          <AnimatePresence mode="popLayout">
-            {currentProfile ? (
-              <motion.div
-                key={currentProfile.id}
-                style={{ x: motionX, y: motionY, rotate }}
-                drag
-                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                dragElastic={0.6}
-                onDragEnd={handleDragEnd}
-                animate={cardControls}
-                className="w-full max-w-[480px] h-[640px] rounded-[28px] overflow-hidden relative cursor-grab active:cursor-grabbing border border-white/10 shadow-2xl bg-card-dark flex flex-col justify-between"
-              >
-                {/* Swipe Text Overlay Badges */}
-                <motion.div style={{ opacity: likeOpacity }} className="absolute top-8 left-8 rotate-[-12deg] z-20 border-4 border-accent text-accent font-display font-black text-3xl px-4 py-2 rounded-2xl pointer-events-none uppercase tracking-wider bg-black/40 backdrop-blur-md">
-                  LIKE
-                </motion.div>
-                <motion.div style={{ opacity: passOpacity }} className="absolute top-8 right-8 rotate-[12deg] z-20 border-4 border-white/40 text-white/70 font-display font-black text-3xl px-4 py-2 rounded-2xl pointer-events-none uppercase tracking-wider bg-black/40 backdrop-blur-md">
-                  PASS
-                </motion.div>
-                <motion.div style={{ opacity: superLikeOpacity }} className="absolute bottom-32 left-1/2 -translate-x-1/2 z-20 border-4 border-primary text-primary font-display font-black text-3xl px-4 py-2 rounded-2xl pointer-events-none uppercase tracking-wider bg-black/40 backdrop-blur-md">
-                  SUPER LIKE
-                </motion.div>
-
-                {/* Main Profile Image */}
-                <div className="absolute inset-0 w-full h-full">
-                  <img 
-                    src={currentProfile.images[activeImageIndex]} 
-                    alt={currentProfile.name}
-                    className="w-full h-full object-cover select-none pointer-events-none"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#040408] via-black/35 to-transparent z-10" />
-
-                  {/* Image Carousel Bar */}
-                  <div className="absolute top-4 left-6 right-6 flex gap-1.5 z-20">
-                    {currentProfile.images.map((_, i) => (
-                      <div 
-                        key={i} 
-                        className={`h-1 flex-1 rounded-full transition-all ${i === activeImageIndex ? 'bg-accent shadow-sm' : 'bg-white/30'}`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Photo Nav Triggers */}
-                  <button onClick={prevImage} className="absolute left-0 top-0 bottom-28 w-1/3 z-10 cursor-w-resize" aria-label="Previous photo" />
-                  <button onClick={nextImage} className="absolute right-0 top-0 bottom-28 w-1/3 z-10 cursor-e-resize" aria-label="Next photo" />
-
-                  {/* Match Score Chip */}
-                  <div 
-                    className="absolute top-8 right-6 z-20"
-                    onClick={() => {
-                      setViewingReportProfileId(currentProfile.id);
-                      setActiveTab('report');
-                    }}
-                  >
-                    <Badge variant="accent" size="lg" icon={Sparkles} className="cursor-pointer hover:scale-105">
-                      Match: {currentProfile.compatibilityReport.overall}%
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* Profile Card Footer */}
-                <div className="mt-auto p-6 relative z-15 w-full flex flex-col justify-end">
-                  <div className="mb-2">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h2 className="text-2xl font-display font-extrabold text-white">
-                        {currentProfile.name}, {currentProfile.age}
-                      </h2>
-                      <Badge variant="primary" size="sm">
-                        {currentProfile.personalityType}
-                      </Badge>
-                    </div>
-                    
-                    <div className="flex flex-col gap-1 text-xs text-white/70">
-                      <div className="flex items-center gap-1.5"><Briefcase size={13} className="text-primary" /> {currentProfile.occupation}</div>
-                      <div className="flex items-center gap-1.5"><MapPin size={13} className="text-accent" /> {currentProfile.location}</div>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-white/80 line-clamp-2 italic mb-4">"{currentProfile.bio}"</p>
-
-                  <div className="flex flex-wrap gap-1.5 mb-5">
-                    {currentProfile.interests.slice(0, 4).map((tag, i) => (
-                      <span key={i} className="px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] text-white/80 backdrop-blur-md">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center justify-between gap-4 pt-4 border-t border-white/10">
-                    <button 
-                      onClick={handleUndo} 
-                      disabled={history.length === 0}
-                      className="w-11 h-11 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white disabled:opacity-20 cursor-pointer transition-all"
-                      aria-label="Undo last swipe"
-                    >
-                      <RotateCcw size={16} />
-                    </button>
-                    
-                    <button 
-                      onClick={() => triggerSwipe('left')} 
-                      className="w-14 h-14 rounded-full border border-white/15 bg-black/60 backdrop-blur-xl flex items-center justify-center text-white/60 hover:text-white hover:border-white/40 cursor-pointer shadow-lg transition-transform hover:scale-105"
-                      aria-label="Pass profile"
-                    >
-                      <X size={24} />
-                    </button>
-                    
-                    <button 
-                      onClick={() => triggerSwipe('up')} 
-                      className="w-12 h-12 rounded-full border border-primary/30 bg-primary/20 backdrop-blur-xl flex items-center justify-center text-purple-300 hover:bg-primary/30 hover:text-white cursor-pointer shadow-lg transition-transform hover:scale-105"
-                      aria-label="Super Like profile"
-                    >
-                      <Star size={20} className="fill-purple-300/30" />
-                    </button>
-                    
-                    <button 
-                      onClick={() => triggerSwipe('right')} 
-                      className="w-14 h-14 rounded-full border border-accent/40 bg-accent/20 backdrop-blur-xl flex items-center justify-center text-pink-300 hover:bg-accent/35 hover:text-white cursor-pointer shadow-lg transition-transform hover:scale-105"
-                      aria-label="Like profile"
-                    >
-                      <Heart size={24} className="fill-accent/20" />
-                    </button>
-                  </div>
-                </div>
-
-              </motion.div>
-            ) : (
-              <EmptyState
-                icon={Sparkles}
-                title="Sync Deck Depleted"
-                description="No matching neural frequencies remain in your orbit. Recalibrate your MBTI dimensions or refresh the deck."
-                actionLabel="Refresh Deck Frequencies"
-                onAction={() => setCurrentIndex(1)}
-                className="max-w-[480px] w-full"
+          {/* LARGE SEARCH BAR */}
+          <div className="relative flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={20} />
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search People, Interests, Cities, Coffee, Travel, Photography, Anime, Gym..." 
+                className="w-full py-4 pl-12 pr-4 rounded-2xl bg-black/60 border border-white/15 text-sm text-white placeholder-white/40 focus:outline-none focus:border-pink-500/80 backdrop-blur-xl shadow-inner transition-all"
               />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* Voice Search Button */}
+            <button 
+              onClick={toggleVoiceSearch}
+              className={`p-4 rounded-2xl border backdrop-blur-xl transition-all cursor-pointer shadow-lg flex items-center gap-2 ${
+                isVoiceListening 
+                  ? 'bg-pink-600 border-pink-400 text-white animate-pulse' 
+                  : 'bg-white/10 border-white/15 text-white/80 hover:bg-white/20 hover:text-white'
+              }`}
+              title="Voice Search Prompt"
+            >
+              <Mic size={20} />
+              <span className="text-xs font-semibold hidden sm:inline">Voice</span>
+            </button>
+
+            {/* AI Prompt Search Button */}
+            <button 
+              onClick={() => setShowAiModal(true)}
+              className="px-4 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold text-xs transition-all cursor-pointer shadow-lg flex items-center gap-2 shrink-0"
+            >
+              <Sparkles size={18} />
+              <span className="hidden sm:inline">AI Match Query</span>
+            </button>
+          </div>
+
+          {/* Quick Search Tag Suggestions */}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-white/50">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-pink-400 font-bold">Trending Tags:</span>
+            {['Coffee Lovers', '35mm Film', 'Spatial Audio', 'Sourdough', 'Jazz Piano', 'Yosemite Climb'].map(tag => (
+              <button
+                key={tag}
+                onClick={() => setSearchQuery(tag)}
+                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* ====================================================
+            SECTION 2: TRENDING ANIMATED CATEGORY CHIPS
+            ==================================================== */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-mono uppercase text-white/60 font-semibold tracking-wider flex items-center gap-2">
+              <Filter size={14} className="text-pink-400" />
+              Explore Categories
+            </h3>
+            {activeCategory !== 'all' && (
+              <button 
+                onClick={() => setActiveCategory('all')}
+                className="text-xs text-pink-400 hover:text-pink-300 font-mono underline"
+              >
+                Reset Filter
+              </button>
             )}
-          </AnimatePresence>
-        </div>
+          </div>
 
-        {/* Right AI Analytics Panel */}
-        <div className="col-span-12 lg:col-span-5 flex flex-col gap-6">
-          {currentProfile ? (
-            <GlassCard className="p-6 border-white/10 bg-card-dark/60 h-[640px] overflow-y-auto" hoverEffect={false}>
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x">
+            {CATEGORIES.map((cat) => {
+              const isActive = activeCategory === cat.id;
+              return (
+                <motion.button
+                  key={cat.id}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shrink-0 snap-start border ${
+                    isActive 
+                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white border-pink-400 shadow-[0_0_20px_rgba(236,72,153,0.4)] scale-105' 
+                      : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-white/80'
+                  }`}
+                >
+                  <span className="text-sm">{cat.icon}</span>
+                  <span>{cat.name}</span>
+                  <span className="text-[10px] font-mono text-white/50 bg-black/30 px-1.5 py-0.5 rounded-full">
+                    {cat.count}
+                  </span>
+                </motion.button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ====================================================
+            SECTION 3: INFINITE DISCOVER FEED (PINTEREST / REELS GRID)
+            ==================================================== */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-display font-bold text-white">Social Discovery Feed</h2>
+              <p className="text-xs text-white/50">Mixed feed of profiles, 10s reels, coffee spots, and AI insights</p>
+            </div>
+            <span className="text-xs font-mono text-white/40">Showing {filteredFeed.length} items</span>
+          </div>
+
+          <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
+            {filteredFeed.map((item, index) => {
               
-              <div className="flex items-center justify-between pb-4 border-b border-white/8 mb-6">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="text-accent" size={18} />
-                  <h3 className="font-display font-bold text-sm text-white uppercase tracking-wider">AI Compatibility Telemetry</h3>
-                </div>
-                <Badge variant="glass" size="sm">
-                  {currentProfile.personalityType}
-                </Badge>
-              </div>
+              // ----------------------------------------------
+              // ITEM TYPE 1: PROFILE CARD
+              // ----------------------------------------------
+              if (item.type === 'profile') {
+                return (
+                  <Tilt key={item.id} className="break-inside-avoid">
+                    <div className="rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/12 overflow-hidden backdrop-blur-2xl p-5 shadow-2xl hover:border-pink-500/40 transition-all group">
+                      
+                      {/* Top Portrait Image */}
+                      <div className="relative h-72 rounded-2xl overflow-hidden mb-4">
+                        <img 
+                          src={item.image} 
+                          alt={item.name} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                        
+                        {/* Top Badges */}
+                        <div className="absolute top-3 left-3 flex gap-2">
+                          <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold">
+                            {item.compatibility}% Match
+                          </span>
+                          {item.verified && (
+                            <span className="p-1 rounded-full bg-black/60 backdrop-blur-md border border-cyan-400/40 text-cyan-400">
+                              <ShieldCheck size={14} />
+                            </span>
+                          )}
+                        </div>
 
-              {/* Gauge & Summary */}
-              <div className="flex items-center gap-5 bg-white/[0.02] border border-white/8 p-4 rounded-2xl mb-6">
-                <div className="relative w-20 h-20 shrink-0">
-                  <svg viewBox="0 0 100 100" className="rotate-90 w-full h-full">
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
-                    <motion.circle 
-                      cx="50" 
-                      cy="50" 
-                      r="40" 
-                      fill="none" 
-                      stroke="#EC4899" 
-                      strokeWidth="8" 
-                      strokeDasharray="250" 
-                      initial={{ strokeDashoffset: 250 }}
-                      animate={{ strokeDashoffset: 250 - (250 * currentProfile.compatibilityReport.overall) / 100 }}
-                      transition={{ duration: 1, ease: 'easeOut' }}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center font-display font-extrabold text-sm text-white">
-                    {currentProfile.compatibilityReport.overall}%
-                  </div>
-                </div>
-                <p className="text-xs text-white/80 leading-relaxed italic">
-                  "{currentProfile.compatibilityReport.summary}"
-                </p>
-              </div>
+                        {/* Voice Intro Pill */}
+                        {item.hasVoiceIntro && (
+                          <button 
+                            onClick={() => toggleVoiceNote(item.id)}
+                            className="absolute top-3 right-3 px-3 py-1 rounded-full bg-pink-500/80 hover:bg-pink-500 backdrop-blur-md text-white text-xs font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-lg"
+                          >
+                            {playingVoiceId === item.id ? <Pause size={12} /> : <Volume2 size={12} />}
+                            Voice Intro ({item.voiceDuration})
+                          </button>
+                        )}
 
-              {/* Score Breakdown */}
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                {[
-                  { label: "Communication", val: currentProfile.compatibilityReport.communication },
-                  { label: "Chemistry", val: currentProfile.compatibilityReport.chemistry },
-                  { label: "Lifestyle", val: currentProfile.compatibilityReport.lifestyle },
-                  { label: "Future Potential", val: currentProfile.compatibilityReport.longTerm }
-                ].map((item, i) => (
-                  <div key={i} className="bg-white/[0.03] border border-white/6 rounded-xl p-3">
-                    <span className="text-[10px] text-white/50 block mb-1 uppercase font-mono font-semibold">{item.label}</span>
-                    <span className="font-display font-bold text-sm text-white">{item.val}%</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Trait Bars */}
-              <div className="space-y-4 mb-6">
-                <h4 className="text-[10px] text-purple-300 uppercase font-bold tracking-wider font-mono">Personality Trait Alignment</h4>
-                {Object.entries(currentProfile.traits).map(([trait, value]) => {
-                  const userVal = userProfile.traits[trait as keyof typeof userProfile.traits] || 50;
-                  return (
-                    <div key={trait} className="text-xs">
-                      <div className="flex justify-between mb-1 text-white/70">
-                        <span className="capitalize">{trait}</span>
-                        <span className="font-mono text-[11px]">You: {userVal}% | {currentProfile.name}: {value}%</span>
+                        {/* Bottom Name & Location Overlay */}
+                        <div className="absolute bottom-3 left-3 right-3">
+                          <h3 className="text-xl font-bold font-display text-white">{item.name}, {item.age}</h3>
+                          <p className="text-xs text-white/70 truncate">{item.occupation}</p>
+                          <p className="text-[10px] text-white/40 mt-0.5">{item.distance}</p>
+                        </div>
                       </div>
-                      <div className="h-2 bg-white/8 rounded-full relative overflow-hidden">
-                        <div className="absolute top-0 bottom-0 left-0 bg-primary/50 rounded-l-full" style={{ width: `${userVal}%` }} />
-                        <div className="absolute top-0 bottom-0 bg-accent/60 rounded-r-full" style={{ left: `${userVal}%`, width: `${Math.abs(value - userVal)}%` }} />
+
+                      {/* Bio & Shared Communities */}
+                      <p className="text-xs text-white/80 line-clamp-2 mb-3 leading-relaxed">
+                        "{item.introText}"
+                      </p>
+
+                      {/* Interest Tags */}
+                      <div className="flex flex-wrap gap-1 mb-4">
+                        {item.interests.map((interest, idx) => (
+                          <span key={idx} className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/8 text-[10px] font-medium text-white/70">
+                            #{interest}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 pt-3 border-t border-white/10">
+                        <button 
+                          onClick={() => handleLikeItem(item.id, item.name)}
+                          className={`flex-1 py-2.5 rounded-2xl font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            likedMap[item.id] 
+                              ? 'bg-pink-600 text-white shadow-pink-600/40' 
+                              : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700'
+                          }`}
+                        >
+                          <Heart size={14} fill={likedMap[item.id] ? "currentColor" : "none"} />
+                          {likedMap[item.id] ? 'Liked!' : 'Like'}
+                        </button>
+
+                        <button 
+                          onClick={() => {
+                            setSelectedMatchId(item.id);
+                            setActiveTab('chats');
+                          }}
+                          className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                          title="Message"
+                        >
+                          <MessageCircle size={16} />
+                        </button>
+
+                        <button 
+                          onClick={() => setPreviewProfile(item)}
+                          className="px-3 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <Eye size={14} />
+                          Preview
+                        </button>
+                      </div>
+
+                    </div>
+                  </Tilt>
+                );
+              }
+
+              // ----------------------------------------------
+              // ITEM TYPE 2: TIKTOK-STYLE REEL CARD
+              // ----------------------------------------------
+              if (item.type === 'reel') {
+                const isPlaying = activeReelPlaying === item.id;
+                return (
+                  <motion.div 
+                    key={item.id} 
+                    whileHover={{ y: -6 }}
+                    className="break-inside-avoid rounded-3xl bg-black border border-pink-500/30 overflow-hidden relative group shadow-2xl h-[420px] flex flex-col justify-between"
+                  >
+                    <img 
+                      src={item.thumbnail} 
+                      alt={item.creatorName} 
+                      className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 ${isPlaying ? 'scale-110' : 'group-hover:scale-105'}`} 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/40" />
+
+                    {/* Top Creator Info */}
+                    <div className="relative z-10 p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <img 
+                          src={item.creatorAvatar} 
+                          alt={item.creatorName} 
+                          className="w-9 h-9 rounded-full object-cover border-2 border-pink-500" 
+                        />
+                        <div>
+                          <h4 className="text-sm font-bold text-white font-display">{item.creatorName}, {item.creatorAge}</h4>
+                          <p className="text-[10px] text-white/60">{item.creatorOccupation}</p>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full bg-pink-500/20 backdrop-blur-md text-[10px] font-mono font-bold text-pink-300 border border-pink-500/40">
+                        10s Reel
+                      </span>
+                    </div>
+
+                    {/* Play Overlay Button */}
+                    <div className="relative z-10 flex items-center justify-center">
+                      <button 
+                        onClick={() => {
+                          setActiveReelPlaying(isPlaying ? null : item.id);
+                          if (!isPlaying) addToast(`Playing 10s Reel from ${item.creatorName}`, 'system');
+                        }}
+                        className="w-14 h-14 rounded-full bg-pink-500/80 hover:bg-pink-500 backdrop-blur-md flex items-center justify-center text-white shadow-2xl transition-transform hover:scale-110 cursor-pointer"
+                      >
+                        {isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}
+                      </button>
+                    </div>
+
+                    {/* Bottom Caption */}
+                    <div className="relative z-10 p-4 space-y-3">
+                      <p className="text-xs text-white/90 line-clamp-2 leading-relaxed">
+                        {item.caption}
+                      </p>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-white/15 text-xs text-white/70">
+                        <span className="flex items-center gap-1 font-mono text-pink-400">
+                          <Heart size={14} className="fill-pink-400" /> {item.likesCount} likes
+                        </span>
+                        <button 
+                          onClick={() => {
+                            setSelectedMatchId(item.id);
+                            setActiveTab('chats');
+                          }}
+                          className="px-3 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs"
+                        >
+                          Reply to Reel
+                        </button>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </motion.div>
+                );
+              }
 
-              {/* Flags */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <h5 className="text-[10px] text-emerald-400 uppercase font-bold tracking-wider mb-2 font-mono">Green Flags</h5>
-                  <ul className="space-y-1.5">
-                    {currentProfile.compatibilityReport.greenFlags.map((flag, idx) => (
-                      <li key={idx} className="text-[11px] text-white/70 flex items-start gap-1.5">
-                        <Check size={11} className="text-emerald-400 mt-0.5 shrink-0" />
-                        <span>{flag}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <h5 className="text-[10px] text-amber-400 uppercase font-bold tracking-wider mb-2 font-mono">Risks & Considerations</h5>
-                  <ul className="space-y-1.5">
-                    {currentProfile.compatibilityReport.weaknesses.map((flag, idx) => (
-                      <li key={idx} className="text-[11px] text-white/70 flex items-start gap-1.5">
-                        <AlertTriangle size={11} className="text-amber-400 mt-0.5 shrink-0" />
-                        <span>{flag}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+              // ----------------------------------------------
+              // ITEM TYPE 3: EXPERIENCE / PLACE CARD
+              // ----------------------------------------------
+              if (item.type === 'experience') {
+                return (
+                  <motion.div 
+                    key={item.id} 
+                    whileHover={{ y: -6 }}
+                    className="break-inside-avoid rounded-3xl bg-white/[0.04] border border-white/12 overflow-hidden backdrop-blur-2xl p-5 shadow-xl group hover:border-purple-500/40 transition-all"
+                  >
+                    <div className="relative h-44 rounded-2xl overflow-hidden mb-4">
+                      <img 
+                        src={item.image} 
+                        alt={item.title} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+                      <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-mono font-bold text-purple-300 border border-purple-500/30">
+                        {item.categoryName}
+                      </span>
+                    </div>
 
-              {/* Suggestions & Action */}
-              <div className="border-t border-white/8 pt-4 space-y-4">
-                <div>
-                  <h5 className="text-[10px] text-white/50 uppercase font-bold tracking-wider mb-2 flex items-center gap-1.5 font-mono">
-                    <Calendar size={12} className="text-accent" /> Recommended First Date
-                  </h5>
-                  <p className="text-xs text-white/80 leading-relaxed bg-white/[0.03] border border-white/6 p-3 rounded-xl">
-                    {currentProfile.compatibilityReport.perfectFirstDate}
-                  </p>
-                </div>
-                
-                <div>
-                  <h5 className="text-[10px] text-white/50 uppercase font-bold tracking-wider mb-2 flex items-center gap-1.5 font-mono">
-                    <Gift size={12} className="text-primary" /> Curated Gift Ideas
-                  </h5>
-                  <div className="flex flex-wrap gap-2">
-                    {currentProfile.compatibilityReport.giftSuggestions.map((gift, idx) => (
-                      <Badge key={idx} variant="glass" size="sm">
-                        {gift}
-                      </Badge>
-                    ))}
+                    <h4 className="text-base font-bold text-white font-display mb-1">{item.title}</h4>
+                    <p className="text-xs text-white/60 flex items-center gap-1 mb-3">
+                      <MapPin size={13} className="text-pink-400" />
+                      {item.location}
+                    </p>
+
+                    <div className="p-3 rounded-2xl bg-purple-950/30 border border-purple-500/20 text-xs text-purple-200 mb-4">
+                      ✨ {item.aiReason}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                      <div className="flex -space-x-2">
+                        {item.attendeesAvatars.map((av, idx) => (
+                          <img key={idx} src={av} alt="Attendee" className="w-6 h-6 rounded-full border border-black" />
+                        ))}
+                      </div>
+                      <button 
+                        onClick={() => addToast(`Saved Experience: ${item.title}`, 'system')}
+                        className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition-colors"
+                      >
+                        Plan Date Here
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              }
+
+              // ----------------------------------------------
+              // ITEM TYPE 4: COMMUNITY DISCORD CARD
+              // ----------------------------------------------
+              if (item.type === 'community') {
+                return (
+                  <motion.div 
+                    key={item.id}
+                    whileHover={{ y: -6 }}
+                    className="break-inside-avoid rounded-3xl bg-gradient-to-br from-indigo-950/40 via-purple-950/20 to-black/80 border border-indigo-500/30 overflow-hidden backdrop-blur-2xl p-5 shadow-2xl"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-mono text-indigo-400 font-bold uppercase tracking-wider">Discord Hub</span>
+                      <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                        {item.onlineCount} Online
+                      </span>
+                    </div>
+
+                    <h4 className="text-lg font-bold text-white font-display mb-2">{item.name}</h4>
+                    <p className="text-xs text-white/70 line-clamp-2 mb-4">
+                      💬 "{item.recentDiscussion}"
+                    </p>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                      <span className="text-xs text-white/50 font-mono">{item.membersCount}</span>
+                      <button 
+                        onClick={() => setActiveTab('communities')}
+                        className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors"
+                      >
+                        Join Hub
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              }
+
+              // ----------------------------------------------
+              // ITEM TYPE 5: EVERY 5th CARD: AURA AI RECOMMENDATION
+              // ----------------------------------------------
+              if (item.type === 'ai_recommendation') {
+                return (
+                  <motion.div 
+                    key={item.id}
+                    whileHover={{ scale: 1.02 }}
+                    className="break-inside-avoid rounded-3xl bg-gradient-to-br from-pink-900/40 via-purple-900/30 to-black/90 border-2 border-pink-500/50 p-6 backdrop-blur-2xl shadow-[0_0_30px_rgba(236,72,153,0.3)] space-y-4"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={18} className="text-pink-400 animate-spin" style={{ animationDuration: '6s' }} />
+                      <span className="text-xs font-bold font-mono text-pink-300 uppercase tracking-wider">
+                        AURA AI SMART RECOMMENDATION
+                      </span>
+                    </div>
+
+                    <h3 className="text-xl font-bold font-display text-white">{item.headline}</h3>
+                    <p className="text-xs text-white/80 leading-relaxed">{item.subtext}</p>
+
+                    <div className="flex items-center gap-3 pt-2">
+                      <div className="flex -space-x-2">
+                        {item.matchAvatars.map((av, idx) => (
+                          <img key={idx} src={av} alt="Match" className="w-8 h-8 rounded-full border-2 border-pink-500 object-cover" />
+                        ))}
+                      </div>
+                      <button 
+                        onClick={() => {
+                          addToast(item.actionLabel, 'system');
+                          setActiveTab('planner');
+                        }}
+                        className="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold text-xs transition-all shadow-lg hover:brightness-110"
+                      >
+                        {item.actionLabel} →
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              }
+
+              return null;
+            })}
+          </div>
+        </section>
+
+        {/* ====================================================
+            SECTION 4: NEARBY EXPERIENCES INTERACTIVE CITY MAP
+            ==================================================== */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <Globe size={20} className="text-cyan-400" />
+                <h2 className="text-2xl font-display font-bold text-white">Nearby Hotspots & Live Pins</h2>
+              </div>
+              <p className="text-xs text-white/60 mt-0.5">Interactive San Francisco city canvas with live matching members</p>
+            </div>
+            <span className="text-xs font-mono text-cyan-400 font-bold">San Francisco, CA</span>
+          </div>
+
+          {/* Interactive Map Visual Box */}
+          <div className="relative h-96 rounded-3xl overflow-hidden border border-white/15 bg-[#0A0B14] shadow-2xl p-4 flex flex-col justify-between">
+            {/* Map Grid Pattern Backdrop */}
+            <div className="absolute inset-0 bg-[radial-gradient(#3B82F6_1px,transparent_1px)] [background-size:24px_24px] opacity-20 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/40 pointer-events-none" />
+
+            {/* Top Map Status */}
+            <div className="relative z-10 flex items-center justify-between">
+              <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                Live Map Radar Active
+              </span>
+            </div>
+
+            {/* Interactive Pulse Pins */}
+            <div className="absolute inset-0 p-8">
+              {NEARBY_MAP_PINS.map((pin) => (
+                <motion.div
+                  key={pin.id}
+                  style={{ top: `${pin.latPct}%`, left: `${pin.lngPct}%` }}
+                  whileHover={{ scale: 1.25 }}
+                  onClick={() => setSelectedMapPin(pin)}
+                  className="absolute cursor-pointer -translate-x-1/2 -translate-y-1/2 group"
+                >
+                  <div className="relative">
+                    <span className="w-6 h-6 rounded-full bg-pink-500/40 animate-ping absolute inset-0" />
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 p-0.5 shadow-[0_0_20px_rgba(236,72,153,0.8)] border border-white flex items-center justify-center">
+                      <img src={pin.image} alt={pin.name} className="w-full h-full rounded-full object-cover" />
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Bottom Selected Map Pin Drawer */}
+            {selectedMapPin && (
+              <div className="relative z-10 p-4 rounded-2xl bg-black/80 backdrop-blur-2xl border border-white/15 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <img src={selectedMapPin.image} alt={selectedMapPin.name} className="w-12 h-12 rounded-xl object-cover border border-cyan-400" />
+                  <div>
+                    <h4 className="text-sm font-bold text-white font-display">{selectedMapPin.name}</h4>
+                    <p className="text-xs text-white/60">{selectedMapPin.address}</p>
                   </div>
                 </div>
 
-                <GlowButton 
-                  onClick={() => {
-                    setViewingReportProfileId(currentProfile.id);
-                    setActiveTab('report');
-                  }}
-                  variant="glass"
-                  className="w-full mt-4 border-accent/30 text-pink-300"
-                  icon={Compass}
-                >
-                  View Full Diagnostic Report
-                </GlowButton>
+                <div className="flex items-center gap-3">
+                  <div className="flex -space-x-2">
+                    {selectedMapPin.matchAvatars.map((av, i) => (
+                      <img key={i} src={av} alt="Match" className="w-7 h-7 rounded-full border border-black" />
+                    ))}
+                  </div>
+                  <button 
+                    onClick={() => setActiveTab('planner')}
+                    className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs transition-colors cursor-pointer"
+                  >
+                    View Spot ({selectedMapPin.liveMatchesCount} Nearby)
+                  </button>
+                </div>
               </div>
-
-            </GlassCard>
-          ) : (
-            <div className="h-[640px] flex items-center justify-center glass-panel border-white/8 p-8 text-center text-white/40">
-              Select a signature in the Swipe Deck to view compatibility indicators.
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </section>
 
       </main>
+
+      {/* ====================================================
+          QUICK PREVIEW DRAWER (SLIDE-OUT PROFILE INSPECTOR)
+          ==================================================== */}
+      <AnimatePresence>
+        {previewProfile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex justify-end"
+            onClick={() => setPreviewProfile(null)}
+          >
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg h-full bg-[#080812] border-l border-white/15 p-6 overflow-y-auto space-y-6 shadow-2xl relative"
+            >
+              {/* Close Button */}
+              <button 
+                onClick={() => setPreviewProfile(null)}
+                className="absolute top-5 right-5 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+
+              {/* Header Image */}
+              <div className="relative h-80 rounded-3xl overflow-hidden mt-4">
+                <img src={previewProfile.image} alt={previewProfile.name} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
+                
+                <div className="absolute bottom-4 left-4 right-4">
+                  <h2 className="text-3xl font-bold font-display text-white">{previewProfile.name}, {previewProfile.age}</h2>
+                  <p className="text-sm text-white/80">{previewProfile.occupation}</p>
+                  <p className="text-xs text-pink-400 font-mono mt-0.5">{previewProfile.distance}</p>
+                </div>
+              </div>
+
+              {/* Voice Intro Player */}
+              {previewProfile.hasVoiceIntro && (
+                <div className="p-4 rounded-2xl bg-pink-950/30 border border-pink-500/30 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => toggleVoiceNote(previewProfile.id)}
+                      className="p-3 rounded-full bg-pink-500 text-white shadow-lg cursor-pointer"
+                    >
+                      {playingVoiceId === previewProfile.id ? <Pause size={16} /> : <Play size={16} />}
+                    </button>
+                    <div>
+                      <h4 className="text-xs font-bold text-pink-300 font-mono uppercase">Voice Intro Note</h4>
+                      <p className="text-[11px] text-white/70">{previewProfile.voiceDuration} duration</p>
+                    </div>
+                  </div>
+                  <Volume2 size={20} className="text-pink-400" />
+                </div>
+              )}
+
+              {/* Bio & Details */}
+              <div className="space-y-2">
+                <h3 className="text-xs font-mono uppercase text-white/40 font-bold">About {previewProfile.name}</h3>
+                <p className="text-sm text-white/90 leading-relaxed font-light">"{previewProfile.introText}"</p>
+              </div>
+
+              {/* Additional Photos Gallery */}
+              <div className="space-y-2">
+                <h3 className="text-xs font-mono uppercase text-white/40 font-bold">Photo Highlights</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {previewProfile.additionalPhotos.map((ph, idx) => (
+                    <img key={idx} src={ph} alt="Gallery" className="w-full h-36 rounded-2xl object-cover border border-white/10" />
+                  ))}
+                </div>
+              </div>
+
+              {/* Favorites & Lifestyle */}
+              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3 text-xs text-white/80">
+                <p>🎵 <span className="font-bold text-white">Favorite Music:</span> {previewProfile.favoriteMusic}</p>
+                <p>📍 <span className="font-bold text-white">Favorite Spot:</span> {previewProfile.favoritePlace}</p>
+                <p>🐶 <span className="font-bold text-white">Pets:</span> {previewProfile.pets}</p>
+                <p>🌍 <span className="font-bold text-white">Travel:</span> {previewProfile.travelHistory.join(', ')}</p>
+              </div>
+
+              {/* Bottom Quick Action Buttons */}
+              <div className="flex items-center gap-3 pt-4 border-t border-white/10 sticky bottom-0 bg-[#080812] py-2">
+                <button 
+                  onClick={() => {
+                    handleLikeItem(previewProfile.id, previewProfile.name);
+                    setPreviewProfile(null);
+                  }}
+                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg"
+                >
+                  <Heart size={16} fill="currentColor" />
+                  Like Profile
+                </button>
+                <button 
+                  onClick={() => {
+                    setSelectedMatchId(previewProfile.id);
+                    setActiveTab('chats');
+                    setPreviewProfile(null);
+                  }}
+                  className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                >
+                  <MessageCircle size={20} />
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ====================================================
+          AI MATCH QUERY MODAL
+          ==================================================== */}
+      <AnimatePresence>
+        {showAiModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4"
+            onClick={() => setShowAiModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg rounded-3xl bg-gradient-to-br from-purple-950/80 via-black to-black border border-purple-500/40 p-6 space-y-5 shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="flex items-center gap-2 text-purple-300">
+                  <Sparkles size={20} className="animate-spin" style={{ animationDuration: '6s' }} />
+                  <h3 className="text-lg font-bold font-display text-white">Aura AI Natural Language Search</h3>
+                </div>
+                <button onClick={() => setShowAiModal(false)} className="text-white/40 hover:text-white">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleAiSearchSubmit} className="space-y-4">
+                <p className="text-xs text-white/70 leading-relaxed">
+                  Describe your ideal match, vibe, interests, or location in natural language:
+                </p>
+                <textarea 
+                  rows={4}
+                  value={aiPromptInput}
+                  onChange={(e) => setAiPromptInput(e.target.value)}
+                  placeholder="e.g. Find creative architects who love vinyl record shops, dark roast coffee, and live jazz in San Francisco..."
+                  className="w-full p-4 rounded-2xl bg-black/60 border border-purple-500/30 text-xs text-white placeholder-white/40 focus:outline-none focus:border-pink-500"
+                />
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowAiModal(false)}
+                    className="px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-xs text-white/80"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold text-xs shadow-lg cursor-pointer"
+                  >
+                    Run AI Natural Language Search
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

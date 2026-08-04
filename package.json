@@ -14,8 +14,12 @@
     "server:start": "npm --prefix server run start"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@react-three/postprocessing": "^3.0.4",
     "@supabase/supabase-js": "^2.49.1",
     "@tailwindcss/vite": "^4.3.3",
+    "@types/three": "^0.185.1",
     "autoprefixer": "^10.5.4",
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
@@ -26,10 +30,12 @@
     "react-dom": "^19.2.7",
     "react-hot-toast": "^2.6.0",
     "react-intersection-observer": "^10.1.0",
+    "react-is": "^19.2.8",
     "react-router-dom": "^7.18.1",
     "recharts": "^3.10.1",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
+    "three": "^0.185.1",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

@@ -12,7 +12,7 @@ interface GlowButtonProps {
   disabled?: boolean;
   isLoading?: boolean;
   ariaLabel?: string;
-  icon?: React.ElementType;
+  icon?: React.ComponentType<{ size?: number; className?: string }> | any;
 }
 
 export default function GlowButton({

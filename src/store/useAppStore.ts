@@ -13,6 +13,7 @@ export interface Message {
   duration?: string;
   imageUrl?: string;
   reaction?: string;
+  isPinned?: boolean;
 }
 
 export interface WingmanAnalysis {
@@ -36,6 +37,35 @@ export interface ToastNotification {
   type: 'match' | 'like' | 'chat' | 'system' | 'premium';
 }
 
+export interface ActiveSession {
+  id: string;
+  deviceName: string;
+  browser: string;
+  location: string;
+  lastActive: string;
+  isCurrent: boolean;
+}
+
+export interface DiscussionComment {
+  id: string;
+  author: string;
+  avatar: string;
+  text: string;
+  timestamp: string;
+}
+
+export interface DiscussionPost {
+  id: string;
+  title: string;
+  author: string;
+  avatar: string;
+  clubName: string;
+  content: string;
+  upvotes: number;
+  comments: DiscussionComment[];
+  timestamp: string;
+}
+
 interface AppState {
   userProfile: Profile;
   profiles: Profile[];
@@ -46,10 +76,36 @@ interface AppState {
   wingmanHistory: WingmanAnalysis[];
   typingMatches: Record<string, boolean>;
   
+  // V4 Experience & Splash Screen
+  showSplash: boolean;
+  soundEnabled: boolean;
+  
+  // V4 Accessibility & Theme
+  highContrast: boolean;
+  reducedMotion: boolean;
+  theme: 'dark' | 'light' | 'luxury';
+
+  // V4 Security & Account
+  twoFactorEnabled: boolean;
+  emailVerified: boolean;
+  activeSessions: ActiveSession[];
+  
+  // V4 Community Interactions
+  joinedClubIds: string[];
+  rsvpedEventIds: string[];
+  upvotedDiscussionIds: string[];
+  discussionPosts: DiscussionPost[];
+
+  // V4 Admin Feature Flags
+  featureFlags: {
+    deck3dTransitions: boolean;
+    proactiveWingman: boolean;
+    brandSoundAudio: boolean;
+    liveTelemetryFeed: boolean;
+  };
+  
   // Live demo telemetry & state
   notifications: ToastNotification[];
-  isDemoMode: boolean;
-  demoStep: number;
   isPremiumUser: boolean;
   viewingReportProfileId: string | null;
   selectedPlannerMatchId: string;
@@ -75,6 +131,23 @@ interface AppState {
   isMemoryPaused: boolean;
 
   // Actions
+  setShowSplash: (show: boolean) => void;
+  toggleSound: () => void;
+  toggleHighContrast: () => void;
+  toggleReducedMotion: () => void;
+  setTheme: (theme: 'dark' | 'light' | 'luxury') => void;
+  toggleTwoFactor: () => void;
+  verifyEmail: () => void;
+  revokeSession: (id: string) => void;
+  togglePinMessage: (matchId: string, messageId: string) => void;
+  toggleJoinClub: (clubId: string) => void;
+  toggleRsvpEvent: (eventId: string) => void;
+  upvoteDiscussion: (postId: string) => void;
+  addDiscussionComment: (postId: string, commentText: string) => void;
+  addDiscussionPost: (title: string, clubName: string, content: string) => void;
+  toggleFeatureFlag: (flagKey: keyof AppState['featureFlags']) => void;
+  exportUserDataJson: () => void;
+
   setUserProfile: (profile: Profile) => void;
   likeProfile: (id: string) => void;
   dislikeProfile: (id: string) => void;
@@ -94,9 +167,6 @@ interface AppState {
   addWingmanAnalysis: (analysis: WingmanAnalysis) => void;
   addToast: (text: string, type: ToastNotification['type']) => void;
   removeToast: (id: string) => void;
-  startDemoMode: () => void;
-  stopDemoMode: () => void;
-  setDemoStep: (step: number) => void;
   setViewingReportProfileId: (id: string | null) => void;
   setPremiumUser: (status: boolean) => void;
 }
@@ -107,9 +177,64 @@ export const useAppStore = create<AppState>((set, get) => ({
   likedProfiles: ["1"], // Pre-match with Elena
   selectedMatchId: "1",
   selectedPlannerMatchId: "1",
-  activeTab: "companion",
+  activeTab: "home",
   
-  // RelOS Telemetry Initial Data
+  // V4 Experience & Splash
+  showSplash: false,
+  soundEnabled: true,
+  
+  // V4 Accessibility & Theme
+  highContrast: false,
+  reducedMotion: false,
+  theme: 'luxury',
+
+  // V4 Security & Account
+  twoFactorEnabled: true,
+  emailVerified: true,
+  activeSessions: [
+    { id: 's1', deviceName: 'MacBook Pro 16" M3 Max', browser: 'Arc Browser (macOS)', location: 'San Francisco, CA', lastActive: 'Active now', isCurrent: true },
+    { id: 's2', deviceName: 'iPhone 16 Pro', browser: 'Aura AI iOS App', location: 'San Francisco, CA', lastActive: '12 mins ago', isCurrent: false },
+    { id: 's3', deviceName: 'iPad Pro 13" OLED', browser: 'Safari Mobile', location: 'Palo Alto, CA', lastActive: 'Yesterday', isCurrent: false }
+  ],
+  
+  // V4 Community Interactions
+  joinedClubIds: ['c1', 'c2'],
+  rsvpedEventIds: ['e1'],
+  upvotedDiscussionIds: ['p1'],
+  discussionPosts: [
+    {
+      id: 'p1',
+      title: 'How AI compatibility scores evolved my perspective on long-term relationships',
+      author: 'Sophia Chen',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      clubName: 'Neural Synergy Lab',
+      content: 'When I first checked Aura AI’s neural report, I thought 94% compatibility was just a high score. But after 6 months of shared values alignment, the communication suggestions were scary accurate...',
+      upvotes: 48,
+      comments: [
+        { id: 'cm1', author: 'Liam Vance', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', text: 'Completely agree! The emotion analysis wingman avoided two miscommunications for us.', timestamp: '2 hours ago' }
+      ],
+      timestamp: '4 hours ago'
+    },
+    {
+      id: 'p2',
+      title: 'Top 5 Architectural & Museum Date Spots in San Francisco',
+      author: 'Alex Mercer',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
+      clubName: 'Design & Architecture Lovers',
+      content: 'If your date loves spatial design and quiet ambient music, the De Young Museum tower deck during dusk is unmatched. Followed by tea at the Japanese Tea Garden.',
+      upvotes: 35,
+      comments: [],
+      timestamp: 'Yesterday'
+    }
+  ],
+
+  // V4 Admin Feature Flags
+  featureFlags: {
+    deck3dTransitions: true,
+    proactiveWingman: true,
+    brandSoundAudio: true,
+    liveTelemetryFeed: true
+  },
   relosScore: 96.8,
   relosScoreTrend: "+2.4% this month",
   partnerPersona: {
@@ -142,8 +267,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   wingmanHistory: [],
   typingMatches: {},
   notifications: [],
-  isDemoMode: false,
-  demoStep: 0,
   isPremiumUser: false,
   viewingReportProfileId: null,
   
@@ -395,16 +518,127 @@ export const useAppStore = create<AppState>((set, get) => ({
     notifications: state.notifications.filter(n => n.id !== id)
   })),
 
-  startDemoMode: () => set({ isDemoMode: true, demoStep: 1, activeTab: "landing" }),
-  
-  stopDemoMode: () => set({ isDemoMode: false, demoStep: 0 }),
-  
-  setDemoStep: (step) => set({ demoStep: step }),
-
   setViewingReportProfileId: (id) => set({ viewingReportProfileId: id }),
 
   setPremiumUser: (status) => {
     set({ isPremiumUser: status });
     ApiClient.upgradeSubscription(status ? 'vip' : 'free');
+  },
+
+  setShowSplash: (show) => set({ showSplash: show }),
+  toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
+  toggleHighContrast: () => set((state) => ({ highContrast: !state.highContrast })),
+  toggleReducedMotion: () => set((state) => ({ reducedMotion: !state.reducedMotion })),
+  setTheme: (theme) => set({ theme }),
+  toggleTwoFactor: () => set((state) => {
+    const next = !state.twoFactorEnabled;
+    state.addToast(`Two-Factor Authentication ${next ? 'enabled' : 'disabled'}`, 'system');
+    return { twoFactorEnabled: next };
+  }),
+  verifyEmail: () => set((state) => {
+    state.addToast('Email verified successfully!', 'system');
+    return { emailVerified: true };
+  }),
+  revokeSession: (id) => set((state) => ({
+    activeSessions: state.activeSessions.filter(s => s.id !== id)
+  })),
+  togglePinMessage: (matchId, messageId) => set((state) => {
+    const thread = state.chatThreads[matchId] || [];
+    const updated = thread.map(msg => 
+      msg.id === messageId ? { ...msg, isPinned: !msg.isPinned } : msg
+    );
+    return {
+      chatThreads: {
+        ...state.chatThreads,
+        [matchId]: updated
+      }
+    };
+  }),
+  toggleJoinClub: (clubId) => set((state) => {
+    const exists = state.joinedClubIds.includes(clubId);
+    const updated = exists ? state.joinedClubIds.filter(id => id !== clubId) : [...state.joinedClubIds, clubId];
+    state.addToast(exists ? 'Left community club' : 'Joined community club!', 'system');
+    return { joinedClubIds: updated };
+  }),
+  toggleRsvpEvent: (eventId) => set((state) => {
+    const exists = state.rsvpedEventIds.includes(eventId);
+    const updated = exists ? state.rsvpedEventIds.filter(id => id !== eventId) : [...state.rsvpedEventIds, eventId];
+    state.addToast(exists ? 'RSVP cancelled' : 'RSVP confirmed for event!', 'system');
+    return { rsvpedEventIds: updated };
+  }),
+  upvoteDiscussion: (postId) => set((state) => {
+    const exists = state.upvotedDiscussionIds.includes(postId);
+    const updatedIds = exists ? state.upvotedDiscussionIds.filter(id => id !== postId) : [...state.upvotedDiscussionIds, postId];
+    const updatedPosts = state.discussionPosts.map(p => {
+      if (p.id === postId) {
+        return { ...p, upvotes: exists ? p.upvotes - 1 : p.upvotes + 1 };
+      }
+      return p;
+    });
+    return { upvotedDiscussionIds: updatedIds, discussionPosts: updatedPosts };
+  }),
+  addDiscussionComment: (postId, commentText) => set((state) => {
+    const updatedPosts = state.discussionPosts.map(p => {
+      if (p.id === postId) {
+        const newComment: DiscussionComment = {
+          id: `cm_${Date.now()}`,
+          author: state.userProfile.name,
+          avatar: state.userProfile.images[0] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+          text: commentText,
+          timestamp: 'Just now'
+        };
+        return { ...p, comments: [...p.comments, newComment] };
+      }
+      return p;
+    });
+    state.addToast('Comment posted', 'system');
+    return { discussionPosts: updatedPosts };
+  }),
+  addDiscussionPost: (title, clubName, content) => set((state) => {
+    const newPost: DiscussionPost = {
+      id: `p_${Date.now()}`,
+      title,
+      author: state.userProfile.name,
+      avatar: state.userProfile.images[0] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      clubName,
+      content,
+      upvotes: 1,
+      comments: [],
+      timestamp: 'Just now'
+    };
+    state.addToast('New discussion post published!', 'system');
+    return {
+      discussionPosts: [newPost, ...state.discussionPosts],
+      upvotedDiscussionIds: [...state.upvotedDiscussionIds, newPost.id]
+    };
+  }),
+  toggleFeatureFlag: (flagKey) => set((state) => ({
+    featureFlags: {
+      ...state.featureFlags,
+      [flagKey]: !state.featureFlags[flagKey]
+    }
+  })),
+  exportUserDataJson: () => {
+    const state = get();
+    const exportData = {
+      userProfile: state.userProfile,
+      relosScore: state.relosScore,
+      relosLifeGoals: state.relosLifeGoals,
+      relosMemoryVault: state.relosMemoryVault,
+      journalEntries: state.journalEntries,
+      wellnessLogs: state.wellnessLogs,
+      likedProfiles: state.likedProfiles,
+      activeSessions: state.activeSessions,
+      exportedAt: new Date().toISOString()
+    };
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aura_ai_export_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    state.addToast('User telemetry & data exported as JSON!', 'system');
   }
 }));
