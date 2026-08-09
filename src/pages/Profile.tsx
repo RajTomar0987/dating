@@ -1,58 +1,108 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Heart, MessageCircle, Video, Volume2, Calendar, Gift, Sparkles, 
   MapPin, Briefcase, GraduationCap, Globe, ShieldCheck, Clock, CheckCircle2, 
   Star, Coffee, Film, BookOpen, Music, Camera, Utensils, Flame, X, Play, 
-  Pause, ChevronRight, Award, Compass, Eye, Users, ChevronDown, ChevronUp, Share2
+  Pause, ChevronRight, Award, Compass, Eye, Users, ChevronDown, ChevronUp, Share2,
+  Loader2, User as UserIcon, Sparkle
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import ParticleBg from '../components/ParticleBg';
 import { useAppStore } from '../store/useAppStore';
-import { PROFILE_DATA } from '../data/profileData';
-import type { StoryHighlight, GalleryMedia, SpotifyTrack, PersonalitySphere } from '../data/profileData';
+import { useAuth } from '../auth/useAuth';
+
+// Helper to calculate age from birthday string (e.g., '2005-12-01')
+const calculateAge = (birthday?: string | null): number | null => {
+  if (!birthday) return null;
+  const birthDate = new Date(birthday);
+  if (isNaN(birthDate.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+};
 
 export default function Profile() {
   const { setActiveTab, setSelectedMatchId, addToast } = useAppStore();
+  const { profile, firebaseUser, jwt, loading, profileLoading } = useAuth();
 
-  // Active States
-  const [activeStory, setActiveStory] = useState<StoryHighlight | null>(null);
-  const [selectedGalleryMedia, setSelectedGalleryMedia] = useState<GalleryMedia | null>(null);
-  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
-  const [playingVoice, setPlayingVoice] = useState(false);
-  const [expandedSphere, setExpandedSphere] = useState<PersonalitySphere | null>(PROFILE_DATA.personalitySpheres[0]);
+  // Active UI States
+  const [activeStory, setActiveStory] = useState<any | null>(null);
+  const [selectedGalleryMedia, setSelectedGalleryMedia] = useState<any | null>(null);
   const [isLiked, setIsLiked] = useState(false);
-  const [showGiftModal, setShowGiftModal] = useState(false);
-  const [showAuraAskModal, setShowAuraAskModal] = useState(false);
-  const [expandedAboutCard, setExpandedAboutCard] = useState<string | null>('goals');
+  const [playingVoice, setPlayingVoice] = useState(false);
 
-  // Action Handlers
+  // Debugging console logs as requested
+  useEffect(() => {
+    console.log('[PROFILE] Firebase user:', firebaseUser);
+    console.log('[PROFILE] JWT exists:', !!jwt);
+    console.log('[PROFILE] Loaded profile:', profile);
+  }, [firebaseUser, jwt, profile]);
+
+  // Loading state handling
+  if (loading || profileLoading) {
+    return (
+      <div className="flex min-h-screen bg-[#04040A] text-white font-sans items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-pink-500 animate-spin" />
+          <p className="text-sm font-mono text-white/60">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Real user data formatting
+  const displayName = profile?.display_name || profile?.first_name || firebaseUser?.displayName || 'User Profile';
+  const age = calculateAge(profile?.birthday);
+  const nameHeading = age ? `${displayName}, ${age}` : displayName;
+
+  const profilePhoto = profile?.photos?.[0] || firebaseUser?.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+  const coverMedia = profile?.photos?.[1] || profile?.photos?.[0] || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=1200&q=80';
+  
+  const occupation = profile?.occupation || 'Not specified';
+  const education = profile?.education || 'Not specified';
+  const locationCity = profile?.location_city || 'Location not set';
+  const bio = profile?.bio || 'No bio provided yet.';
+  const gender = profile?.gender || 'Not specified';
+  const interestedIn = profile?.interested_in?.length ? profile.interested_in.join(', ') : 'Not specified';
+  const heightText = profile?.height_cm ? `${profile.height_cm} cm` : 'Not specified';
+  const languagesText = profile?.languages?.length ? profile.languages.join(', ') : 'Not specified';
+
+  const interestsList = profile?.interests?.length ? profile.interests : ['Artificial Intelligence', 'Travel', 'Music', 'Fitness'];
+  const lifestyleList = profile?.lifestyle?.length ? profile.lifestyle : ['Early Bird', 'Active Lifestyle'];
+  const promptsMap = profile?.prompts || {};
+
+  // Story highlights derived from user photos or default highlights
+  const highlights = profile?.photos?.map((photoUrl, idx) => ({
+    id: `hl_${idx}`,
+    title: idx === 0 ? 'Main' : `Highlight ${idx + 1}`,
+    icon: idx === 0 ? '✨' : '📸',
+    coverImage: photoUrl,
+    storyMedia: photoUrl,
+    caption: `${displayName}'s profile highlight #${idx + 1}`
+  })) || [
+    {
+      id: 'hl_main',
+      title: 'Main',
+      icon: '✨',
+      coverImage: profilePhoto,
+      storyMedia: profilePhoto,
+      caption: `${displayName}'s primary highlight`
+    }
+  ];
+
   const handleLike = () => {
     setIsLiked(!isLiked);
-    if (!isLiked) {
-      addToast(`Sent a secret crush heart to ${PROFILE_DATA.name}! ✨`, 'match');
-    }
-  };
-
-  const handleStartChat = () => {
-    setSelectedMatchId('sp1');
-    setActiveTab('chats');
+    addToast(isLiked ? 'Removed from favorites' : 'Saved to favorites! ✨', 'system');
   };
 
   const handleVoiceIntroToggle = () => {
     setPlayingVoice(!playingVoice);
-    if (!playingVoice) {
-      addToast(`Playing ${PROFILE_DATA.name}'s 28s Voice Intro & Violin note...`, 'chat');
-    }
-  };
-
-  const toggleTrackPlay = (trackId: string, trackTitle: string) => {
-    if (playingTrackId === trackId) {
-      setPlayingTrackId(null);
-    } else {
-      setPlayingTrackId(trackId);
-      addToast(`Playing Spotify Preview: ${trackTitle}`, 'system');
-    }
+    addToast(playingVoice ? 'Paused voice note' : `Playing ${displayName}'s audio intro...`, 'system');
   };
 
   return (
@@ -74,84 +124,78 @@ export default function Profile() {
             SECTION 1: HERO COVER & FLOATING PROFILE CARD
             ==================================================== */}
         <section className="relative rounded-3xl overflow-hidden border border-white/12 bg-gradient-to-b from-white/[0.06] to-black/80 backdrop-blur-2xl shadow-2xl">
-          {/* Full-bleed Cover Media */}
+          {/* Cover Media */}
           <div className="relative h-64 sm:h-80 md:h-96 w-full overflow-hidden">
             <img 
-              src={PROFILE_DATA.coverMedia} 
-              alt="Cover Media" 
+              src={coverMedia} 
+              alt="Cover" 
               className="w-full h-full object-cover opacity-60 mix-blend-overlay scale-105" 
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#04040A] via-black/30 to-black/40" />
 
-            {/* Top Badges */}
+            {/* Status Badge */}
             <div className="absolute top-4 right-4 flex items-center gap-2">
               <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-emerald-500/40 text-emerald-400 text-xs font-mono font-bold flex items-center gap-1.5 shadow-lg">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                {PROFILE_DATA.lastActive}
+                Active Now
               </span>
             </div>
           </div>
 
-          {/* Overlapping Avatar & Floating Details */}
+          {/* Overlapping Avatar & Details */}
           <div className="px-6 pb-8 pt-0 relative -mt-24 sm:-mt-32 flex flex-col md:flex-row items-center md:items-end justify-between gap-6">
             
             <div className="flex flex-col md:flex-row items-center md:items-end gap-6 text-center md:text-left">
-              {/* Animated Glowing Profile Picture */}
+              {/* Profile Picture */}
               <div className="relative group">
-                <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-3xl p-1 bg-gradient-to-tr from-pink-500 via-purple-500 to-cyan-400 shadow-[0_0_50px_rgba(236,72,153,0.5)] animate-pulse" style={{ animationDuration: '4s' }}>
+                <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-3xl p-1 bg-gradient-to-tr from-pink-500 via-purple-500 to-cyan-400 shadow-[0_0_50px_rgba(236,72,153,0.5)]">
                   <div className="w-full h-full rounded-[22px] bg-black overflow-hidden relative">
                     <img 
-                      src={PROFILE_DATA.avatar} 
-                      alt={PROFILE_DATA.name} 
+                      src={profilePhoto} 
+                      alt={displayName} 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                     />
                   </div>
                 </div>
-                {PROFILE_DATA.isOnline && (
-                  <span className="absolute bottom-2 right-2 w-6 h-6 rounded-full bg-emerald-500 border-4 border-[#04040A] shadow-xl" title="Live Online" />
-                )}
+                <span className="absolute bottom-2 right-2 w-6 h-6 rounded-full bg-emerald-500 border-4 border-[#04040A] shadow-xl" title="Online" />
               </div>
 
-              {/* Name, Occupation & Badges */}
+              {/* Name & Info */}
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
                   <h1 className="text-3xl sm:text-5xl font-display font-black text-white tracking-tight">
-                    {PROFILE_DATA.name}, {PROFILE_DATA.age}
+                    {nameHeading}
                   </h1>
-                  {PROFILE_DATA.isVerified && (
-                    <span className="p-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-400/40" title="Identity Verified">
-                      <ShieldCheck size={22} />
-                    </span>
-                  )}
-                  {PROFILE_DATA.isAiVerified && (
-                    <span className="px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-mono font-bold flex items-center gap-1">
-                      <Sparkles size={13} /> AI Digital Twin Verified
-                    </span>
-                  )}
+                  <span className="p-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-400/40" title="Verified Profile">
+                    <ShieldCheck size={22} />
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-mono font-bold flex items-center gap-1">
+                    <Sparkles size={13} /> Verified Member
+                  </span>
                 </div>
 
                 <p className="text-sm md:text-base text-pink-300 font-medium flex items-center justify-center md:justify-start gap-2">
                   <Briefcase size={16} />
-                  {PROFILE_DATA.occupation}
+                  {occupation}
                 </p>
 
                 <div className="flex flex-wrap justify-center md:justify-start gap-2 text-xs text-white/70 font-mono">
-                  <span className="flex items-center gap-1"><MapPin size={13} className="text-pink-400" /> {PROFILE_DATA.location} • {PROFILE_DATA.distance}</span>
-                  <span className="flex items-center gap-1"><GraduationCap size={13} className="text-purple-400" /> {PROFILE_DATA.education}</span>
+                  <span className="flex items-center gap-1"><MapPin size={13} className="text-pink-400" /> {locationCity}</span>
+                  <span className="flex items-center gap-1"><GraduationCap size={13} className="text-purple-400" /> {education}</span>
                 </div>
               </div>
             </div>
 
-            {/* Relationship Goal Badge */}
+            {/* Match Preferences Card */}
             <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/12 backdrop-blur-xl text-center md:text-right max-w-xs space-y-1">
-              <span className="text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider block">Relationship Intention</span>
-              <p className="text-xs font-semibold text-white">{PROFILE_DATA.relationshipIntention}</p>
+              <span className="text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider block">Interested In</span>
+              <p className="text-xs font-semibold text-white">{interestedIn}</p>
             </div>
           </div>
         </section>
 
         {/* ====================================================
-            SECTION 2: INSTAGRAM-STYLE STORY HIGHLIGHTS
+            SECTION 2: STORY HIGHLIGHTS
             ==================================================== */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
@@ -159,11 +203,11 @@ export default function Profile() {
               <Flame size={14} className="text-pink-400" />
               Story Highlights
             </h3>
-            <span className="text-xs text-white/40 font-mono">Tap to View Highlight Reels</span>
+            <span className="text-xs text-white/40 font-mono">Tap to view photos</span>
           </div>
 
           <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none snap-x">
-            {PROFILE_DATA.highlights.map((hl) => (
+            {highlights.map((hl) => (
               <motion.div
                 key={hl.id}
                 whileHover={{ scale: 1.08, y: -4 }}
@@ -183,365 +227,148 @@ export default function Profile() {
         </section>
 
         {/* ====================================================
-            SECTION 3: HUMAN AI INSIGHTS & SYNERGY OVERLAP
-            ==================================================== */}
-        <section className="rounded-3xl p-6 md:p-8 bg-gradient-to-br from-purple-950/40 via-pink-950/20 to-black/80 border border-purple-500/30 backdrop-blur-2xl shadow-2xl space-y-4">
-          <div className="flex items-center gap-2">
-            <Sparkles size={20} className="text-pink-400 animate-spin" style={{ animationDuration: '6s' }} />
-            <h3 className="text-lg font-bold font-display text-white">Aura AI Human Story Insights</h3>
-          </div>
-
-          <p className="text-xs text-white/70 leading-relaxed">
-            Instead of arbitrary percentage charts, here is how your lifestyles and passions naturally align:
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {PROFILE_DATA.aiInsights.map((insight, idx) => (
-              <div 
-                key={idx} 
-                className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 text-xs font-medium text-purple-200 backdrop-blur-md flex items-start gap-2"
-              >
-                {insight}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ====================================================
-            SECTION 4: ABOUT ME & EXPANDABLE STORY CARDS
+            SECTION 3: ABOUT ME & BIO
             ==================================================== */}
         <section className="space-y-6">
-          <h2 className="text-2xl font-display font-bold text-white">About {PROFILE_DATA.name}</h2>
+          <h2 className="text-2xl font-display font-bold text-white">About {displayName}</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* Quote & Life Goals Card */}
+            {/* Bio Card */}
             <div className="p-6 rounded-3xl bg-white/[0.04] border border-white/12 backdrop-blur-2xl space-y-4 shadow-xl">
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <span className="text-xs font-mono font-bold text-pink-400 uppercase">FAVORITE QUOTE & LIFE GOALS</span>
-                <BookOpen size={16} className="text-pink-400" />
+                <span className="text-xs font-mono font-bold text-pink-400 uppercase">BIO & SELF INTRODUCTION</span>
+                <UserIcon size={16} className="text-pink-400" />
               </div>
-              <blockquote className="text-sm italic text-white/90 font-serif leading-relaxed">
-                {PROFILE_DATA.quote}
-              </blockquote>
-              <div>
-                <span className="text-[11px] font-mono text-white/40 block uppercase mb-1">Core Life Goal</span>
-                <p className="text-xs text-white/80 leading-relaxed">{PROFILE_DATA.lifeGoals}</p>
-              </div>
+              <p className="text-sm text-white/90 leading-relaxed font-sans">
+                {bio}
+              </p>
             </div>
 
-            {/* Weekend Routine & Love Language */}
+            {/* Quick Details Card */}
             <div className="p-6 rounded-3xl bg-white/[0.04] border border-white/12 backdrop-blur-2xl space-y-4 shadow-xl">
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <span className="text-xs font-mono font-bold text-purple-400 uppercase">WEEKEND ROUTINE & LOVE LANGUAGE</span>
+                <span className="text-xs font-mono font-bold text-purple-400 uppercase">PROFILE DETAILS</span>
                 <Coffee size={16} className="text-purple-400" />
               </div>
-              <div>
-                <span className="text-[11px] font-mono text-white/40 block uppercase mb-1">Perfect Saturday</span>
-                <p className="text-xs text-white/80 leading-relaxed">{PROFILE_DATA.weekendRoutine}</p>
-              </div>
-              <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
-                <span className="text-white/60">Love Language:</span>
-                <span className="font-bold text-pink-300 font-mono">{PROFILE_DATA.loveLanguage}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-white/60">Myers-Briggs Personality:</span>
-                <span className="font-bold text-purple-300 font-mono">{PROFILE_DATA.personalityType}</span>
+              
+              <div className="space-y-2 text-xs font-sans">
+                <div className="flex justify-between py-1.5 border-b border-white/5">
+                  <span className="text-white/50">Gender</span>
+                  <span className="text-white font-medium">{gender}</span>
+                </div>
+                <div className="flex justify-between py-1.5 border-b border-white/5">
+                  <span className="text-white/50">Height</span>
+                  <span className="text-white font-medium">{heightText}</span>
+                </div>
+                <div className="flex justify-between py-1.5 border-b border-white/5">
+                  <span className="text-white/50">Languages</span>
+                  <span className="text-white font-medium">{languagesText}</span>
+                </div>
+                <div className="flex justify-between py-1.5">
+                  <span className="text-white/50">Location</span>
+                  <span className="text-white font-medium">{locationCity}</span>
+                </div>
               </div>
             </div>
 
           </div>
         </section>
 
+        {/* Prompts Section if user saved any */}
+        {Object.keys(promptsMap).length > 0 && (
+          <section className="space-y-4">
+            <h3 className="text-lg font-display font-bold text-white">Prompts & Answers</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {Object.entries(promptsMap).map(([question, answer], idx) => (
+                <div key={idx} className="p-5 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl space-y-2">
+                  <span className="text-xs font-mono text-purple-400 font-bold">{question}</span>
+                  <p className="text-sm font-semibold text-white leading-relaxed">{answer}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* ====================================================
-            SECTION 5: INTERACTIVE LIFESTYLE DASHBOARD
+            SECTION 4: INTERESTS & LIFESTYLE
             ==================================================== */}
         <section className="space-y-4">
-          <h2 className="text-2xl font-display font-bold text-white">Lifestyle & Passions</h2>
+          <h2 className="text-2xl font-display font-bold text-white">Interests & Lifestyle</h2>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            {[
-              { label: 'Coffee', icon: Coffee, desc: 'Pour-overs & Ethiopian Gesha', color: 'from-amber-500 to-orange-600' },
-              { label: 'Violin Music', icon: Music, desc: 'Bach sonatas & ambient synths', color: 'from-purple-500 to-pink-600' },
-              { label: 'Travel', icon: Globe, desc: 'Kyoto ryokans & Iceland ring road', color: 'from-cyan-500 to-blue-600' },
-              { label: '35mm Art', icon: Camera, desc: 'Leica street film photography', color: 'from-fuchsia-500 to-pink-600' },
-              { label: 'AI Science', icon: Sparkles, desc: 'Neural attention models', color: 'from-emerald-500 to-teal-600' },
-              { label: 'Books', icon: BookOpen, desc: 'Philosophy & Sci-fi novels', color: 'from-indigo-500 to-purple-600' },
-              { label: 'Indie Film', icon: Film, desc: 'Blade Runner 35mm screenings', color: 'from-rose-500 to-red-600' },
-              { label: 'Pilates', icon: Flame, desc: 'Morning reformer sessions', color: 'from-yellow-500 to-amber-600' },
-              { label: 'Foodie', icon: Utensils, desc: 'Midnight Japantown ramen', color: 'from-amber-600 to-orange-700' },
-              { label: 'Cats', icon: Heart, desc: 'Maine Coon cat named Mochi', color: 'from-pink-500 to-rose-600' }
-            ].map((item, idx) => {
-              const IconComponent = item.icon;
-              return (
+          <div className="flex flex-wrap gap-2.5">
+            {interestsList.map((interest, idx) => (
+              <div 
+                key={idx}
+                className="px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 via-purple-600/20 to-accent/20 border border-accent/40 text-xs font-semibold text-white shadow-md flex items-center gap-1.5"
+              >
+                <Sparkles size={12} className="text-pink-400" />
+                <span>{interest}</span>
+              </div>
+            ))}
+
+            {lifestyleList.map((item, idx) => (
+              <div 
+                key={`life_${idx}`}
+                className="px-4 py-2 rounded-full bg-white/[0.05] border border-white/12 text-xs font-semibold text-purple-200 flex items-center gap-1.5"
+              >
+                <Flame size={12} className="text-purple-400" />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ====================================================
+            SECTION 5: PHOTOS GALLERY
+            ==================================================== */}
+        {profile?.photos && profile.photos.length > 0 && (
+          <section className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-display font-bold text-white">Uploaded Photos</h2>
+                <p className="text-xs text-white/50">{profile.photos.length} photos on file</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {profile.photos.map((url, idx) => (
                 <motion.div
                   key={idx}
-                  whileHover={{ scale: 1.05, y: -4 }}
-                  className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-pink-500/40 backdrop-blur-xl space-y-2 group cursor-pointer shadow-lg transition-all"
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  onClick={() => setSelectedGalleryMedia({ url, caption: `${displayName} Photo ${idx + 1}` })}
+                  className="rounded-3xl bg-white/[0.04] border border-white/10 overflow-hidden backdrop-blur-xl group cursor-pointer shadow-xl h-72 relative"
                 >
-                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-tr ${item.color} flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform`}>
-                    <IconComponent size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-white font-display group-hover:text-pink-300 transition-colors">{item.label}</h4>
-                    <p className="text-[10px] text-white/50 line-clamp-1">{item.desc}</p>
+                  <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-4 flex items-end">
+                    <p className="text-xs text-white font-medium">Photo {idx + 1}</p>
                   </div>
                 </motion.div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ====================================================
-            SECTION 6: PINTEREST MEDIA GALLERY
-            ==================================================== */}
-        <section className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-display font-bold text-white">Media Gallery & 3D Memories</h2>
-              <p className="text-xs text-white/50">Concerts, audio moments, and visual highlights</p>
+              ))}
             </div>
-            <span className="text-xs font-mono text-white/40">{PROFILE_DATA.gallery.length} Media Highlights</span>
-          </div>
-
-          <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
-            {PROFILE_DATA.gallery.map((item) => (
-              <motion.div
-                key={item.id}
-                whileHover={{ y: -6, scale: 1.02 }}
-                onClick={() => setSelectedGalleryMedia(item)}
-                className="break-inside-avoid rounded-3xl bg-white/[0.04] border border-white/10 overflow-hidden backdrop-blur-xl group cursor-pointer shadow-xl hover:border-pink-500/40 transition-all"
-              >
-                <div className="relative h-64 overflow-hidden">
-                  <img src={item.url} alt={item.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/20" />
-
-                  {item.type === 'voice' && (
-                    <span className="absolute top-3 right-3 px-3 py-1 rounded-full bg-pink-500/80 backdrop-blur-md text-white text-xs font-mono font-bold flex items-center gap-1">
-                      <Volume2 size={12} /> Voice Note ({item.voiceDuration})
-                    </span>
-                  )}
-                  {item.type === 'memory3d' && (
-                    <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-purple-500/80 backdrop-blur-md text-white text-xs font-mono font-bold flex items-center gap-1">
-                      <Sparkles size={12} /> 3D Memory
-                    </span>
-                  )}
-
-                  <div className="absolute bottom-3 left-3 right-3">
-                    <p className="text-xs text-white font-medium line-clamp-2">{item.caption}</p>
-                    <span className="text-[10px] text-pink-400 font-mono mt-1 block">❤️ {item.likes} likes</span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {/* ====================================================
-            SECTION 7: SPOTIFY MUSIC INTEGRATION
-            ==================================================== */}
-        <section className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <Music size={20} className="text-emerald-400" />
-                <h2 className="text-2xl font-display font-bold text-white">Spotify Music Compatibility</h2>
-              </div>
-              <p className="text-xs text-white/50 mt-0.5">Favorite artists & classical focus playlists</p>
-            </div>
-            <span className="text-xs font-mono text-emerald-400 font-bold">🟢 96% Music Overlap</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {PROFILE_DATA.spotifyTracks.map((track) => (
-              <motion.div
-                key={track.id}
-                whileHover={{ y: -4 }}
-                className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-2xl flex items-center justify-between gap-4 shadow-lg group hover:border-emerald-500/40 transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <img src={track.albumCover} alt={track.title} className="w-12 h-12 rounded-xl object-cover border border-white/15" />
-                  <div>
-                    <h4 className="text-sm font-bold text-white font-display group-hover:text-emerald-300 transition-colors">{track.title}</h4>
-                    <p className="text-xs text-white/60">{track.artist}</p>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={() => toggleTrackPlay(track.id, track.title)}
-                  className="p-2.5 rounded-full bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer"
-                >
-                  {playingTrackId === track.id ? <Pause size={16} /> : <Play size={16} />}
-                </button>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {/* ====================================================
-            SECTION 8: TRAVEL MAP & DESTINATIONS
-            ==================================================== */}
-        <section className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <Globe size={20} className="text-cyan-400" />
-                <h2 className="text-2xl font-display font-bold text-white">Travel Passport & Dream Destinations</h2>
-              </div>
-              <p className="text-xs text-white/50 mt-0.5">Countries visited, dream tea tours & upcoming flights</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-4">
-            {PROFILE_DATA.travel.map((dest) => (
-              <motion.div
-                key={dest.id}
-                whileHover={{ y: -6, scale: 1.03 }}
-                className="rounded-2xl bg-white/[0.04] border border-white/10 overflow-hidden backdrop-blur-xl p-3 shadow-lg flex flex-col justify-between h-44 group hover:border-cyan-500/40 transition-all"
-              >
-                <div className="relative h-24 rounded-xl overflow-hidden mb-2">
-                  <img src={dest.image} alt={dest.country} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <span className="absolute top-2 left-2 text-xl">{dest.flag}</span>
-                  <span className={`absolute bottom-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold ${
-                    dest.status === 'Visited' ? 'bg-emerald-500/80 text-white' : dest.status === 'Upcoming' ? 'bg-purple-500/80 text-white' : 'bg-pink-500/80 text-white'
-                  }`}>
-                    {dest.status}
-                  </span>
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white font-display">{dest.country}</h4>
-                  {dest.year && <p className="text-[10px] text-white/40 font-mono">{dest.year}</p>}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {/* ====================================================
-            SECTION 9: FLOATING 3D PERSONALITY SPHERES
-            ==================================================== */}
-        <section className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-display font-bold text-white">3D Personality Spheres</h2>
-            <p className="text-xs text-white/50">Hover or click a sphere to inspect behavioral anecdotes</p>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-            {PROFILE_DATA.personalitySpheres.map((sphere) => {
-              const isSelected = expandedSphere?.id === sphere.id;
-              return (
-                <motion.div
-                  key={sphere.id}
-                  whileHover={{ scale: 1.1, y: -6 }}
-                  onClick={() => setExpandedSphere(sphere)}
-                  className={`p-4 rounded-3xl backdrop-blur-2xl border cursor-pointer text-center space-y-2 transition-all shadow-2xl ${
-                    isSelected ? 'bg-white/10 border-pink-400 scale-105 shadow-[0_0_25px_rgba(236,72,153,0.4)]' : 'bg-white/[0.03] border-white/10'
-                  }`}
-                >
-                  <div 
-                    className="w-16 h-16 rounded-full mx-auto flex items-center justify-center text-white font-mono font-bold text-sm shadow-xl"
-                    style={{ backgroundColor: sphere.color }}
-                  >
-                    {sphere.score}%
-                  </div>
-                  <h4 className="text-xs font-bold text-white font-display">{sphere.name}</h4>
-                </motion.div>
-              );
-            })}
-          </div>
-
-          {/* Expanded Anecdote Box */}
-          {expandedSphere && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-5 rounded-3xl bg-purple-950/30 border border-purple-500/30 backdrop-blur-2xl text-xs text-purple-200 flex items-start gap-3 shadow-xl"
-            >
-              <Sparkles size={18} className="text-pink-400 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold text-white block mb-0.5">{expandedSphere.name} Personality Anecdote ({expandedSphere.score}%)</span>
-                {expandedSphere.explanation}
-              </div>
-            </motion.div>
-          )}
-        </section>
-
-        {/* ====================================================
-            SECTION 10: VERTICAL LIFE TIMELINE
-            ==================================================== */}
-        <section className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-display font-bold text-white">Life Timeline & Milestones</h2>
-            <p className="text-xs text-white/50">Graduations, recitals, publications, and personal milestones</p>
-          </div>
-
-          <div className="relative border-l-2 border-white/15 ml-4 pl-6 space-y-6">
-            {PROFILE_DATA.timeline.map((ms) => (
-              <motion.div key={ms.id} whileHover={{ x: 4 }} className="relative group">
-                <span className="absolute -left-[31px] top-1 w-5 h-5 rounded-full bg-pink-500 border-4 border-[#04040A] shadow-md" />
-                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-pink-300 font-display">{ms.title}</span>
-                    <span className="text-[10px] font-mono text-white/40 bg-black/40 px-2 py-0.5 rounded-full">{ms.year}</span>
-                  </div>
-                  <p className="text-xs text-white/70">{ms.description}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
+          </section>
+        )}
 
       </main>
 
-      {/* ====================================================
-          STICKY FLOATING QUICK ACTION BAR
-          ==================================================== */}
+      {/* STICKY FLOATING QUICK ACTION BAR */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-xl w-[92%] sm:w-auto p-2.5 rounded-full bg-black/80 border border-white/20 backdrop-blur-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] flex items-center justify-center gap-2">
         <button 
           onClick={handleLike}
-          className={`px-4 py-2.5 rounded-full font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
+          className={`px-5 py-2.5 rounded-full font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
             isLiked ? 'bg-pink-600 text-white shadow-pink-600/40' : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:brightness-110'
           }`}
         >
           <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
-          <span className="hidden sm:inline">{isLiked ? 'Liked' : 'Like'}</span>
+          <span>{isLiked ? 'Favorited' : 'Favorite'}</span>
         </button>
 
         <button 
-          onClick={handleStartChat}
-          className="p-2.5 sm:px-4 sm:py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+          onClick={() => setActiveTab('onboarding')}
+          className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
         >
-          <MessageCircle size={16} />
-          <span className="hidden sm:inline">Chat</span>
-        </button>
-
-        <button 
-          onClick={handleVoiceIntroToggle}
-          className="p-2.5 sm:px-4 sm:py-2.5 rounded-full bg-pink-500/20 text-pink-300 hover:bg-pink-500 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-        >
-          <Volume2 size={16} />
-          <span className="hidden sm:inline">Voice Intro</span>
-        </button>
-
-        <button 
-          onClick={() => {
-            addToast(`Invited ${PROFILE_DATA.name} for a coffee date! ☕`, 'match');
-            setActiveTab('planner');
-          }}
-          className="p-2.5 sm:px-4 sm:py-2.5 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-        >
-          <Calendar size={16} />
-          <span className="hidden sm:inline">Date Invite</span>
-        </button>
-
-        <button 
-          onClick={() => {
-            addToast(`Sent a virtual coffee gift to ${PROFILE_DATA.name}! 🎁`, 'system');
-          }}
-          className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-          title="Send Gift"
-        >
-          <Gift size={16} />
+          <Sparkles size={16} />
+          <span>Edit Profile</span>
         </button>
       </div>
 
@@ -569,7 +396,7 @@ export default function Profile() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{activeStory.icon}</span>
-                    <h4 className="text-sm font-bold text-white font-display">{activeStory.title} Highlight</h4>
+                    <h4 className="text-sm font-bold text-white font-display">{activeStory.title}</h4>
                   </div>
                   <button onClick={() => setActiveStory(null)} className="p-2 rounded-full bg-black/50 text-white"><X size={18} /></button>
                 </div>

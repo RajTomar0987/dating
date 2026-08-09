@@ -1,40 +1,40 @@
-import React, { useState } from 'react';
-import { useAppStore } from '../store/useAppStore';
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Heart, Sparkles, Phone, Mail, Apple } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
-import GlowButton from '../components/GlowButton';
-import Badge from '../components/Badge';
-import { Mail, Lock, Heart, Sparkles, ArrowRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import GoogleButton from '../components/auth/GoogleButton';
+import EmailLogin from '../components/auth/EmailLogin';
+import PhoneLogin from '../components/auth/PhoneLogin';
+import { useAuth } from '../auth/useAuth';
+
+type AuthMethod = 'email' | 'phone';
 
 export default function Login() {
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const { loginWithEmail, loginWithGoogle, loginWithPhone, verifyPhoneOTP, error, clearError } = useAuth();
+  const [authMethod, setAuthMethod] = useState<AuthMethod>('email');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setActiveTab('deck');
-    }, 600);
+  const handleEmailLogin = async (email: string, password: string) => {
+    await loginWithEmail(email, password);
   };
 
-  const handleDemoAccess = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setActiveTab('deck');
-    }, 400);
+  const handleGoogleLogin = async () => {
+    await loginWithGoogle();
+  };
+
+  const handleAppleLogin = async () => {
+    // Apple Sign-In architecture prepared — requires Apple Developer account
+    alert('Apple Sign-In coming soon. Please use Google or Email login.');
   };
 
   return (
     <div className="min-h-screen bg-bg-luxury flex items-center justify-center p-6 relative overflow-hidden">
       {/* Background spotlights */}
-      <div className="luxury-bg-glow" />
-      <div className="glow-spot-1" />
-      <div className="glow-spot-2" />
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-gradient-to-tr from-primary/20 via-accent/15 to-purple-800/10 blur-[100px]" />
+        <div className="absolute bottom-20 right-20 w-[300px] h-[300px] rounded-full bg-pink-600/10 blur-[80px]" />
+      </div>
 
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 15 }}
@@ -43,108 +43,113 @@ export default function Login() {
         className="max-w-[440px] w-full relative z-10"
       >
         <GlassCard className="p-8 md:p-10 border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.8)]" hoverEffect={false}>
+          {/* Header */}
           <div className="text-center mb-8">
-            <div 
-              className="inline-flex items-center justify-center gap-2 mb-4 cursor-pointer group px-3 py-1.5 rounded-2xl hover:bg-white/[0.04] transition-colors" 
-              onClick={() => setActiveTab('landing')}
-              role="button"
-              tabIndex={0}
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center gap-2 mb-4 group px-3 py-1.5 rounded-2xl hover:bg-white/[0.04] transition-colors"
             >
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
                 <Heart className="text-white fill-white" size={18} />
               </div>
               <span className="font-display font-extrabold text-xl tracking-wider">
-                AURA<span className="gradient-text">AI</span>
+                AURA<span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">AI</span>
               </span>
-            </div>
-
-            <div className="flex justify-center mb-2">
-              <Badge variant="primary" size="sm" icon={Sparkles}>
-                Investor Telemetry Enabled
-              </Badge>
-            </div>
+            </Link>
 
             <h2 className="text-2xl font-display font-bold text-white mb-2">Welcome Back</h2>
             <p className="text-xs text-white/60 leading-relaxed font-sans">
-              Enter credentials to synchronize your relationship intelligence profile.
+              Sign in to your relationship intelligence profile.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label htmlFor="login-email" className="text-[10px] text-white/60 uppercase font-bold tracking-wider block mb-2 font-mono">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" size={16} />
-                <input
-                  id="login-email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="alex.mercer@aura.ai"
-                  className="glass-input w-full pl-11"
-                />
-              </div>
-            </div>
+          {/* Social Login */}
+          <div className="space-y-3 mb-6">
+            <GoogleButton onClick={handleGoogleLogin} label="Continue with Google" />
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label htmlFor="login-password" className="text-[10px] text-white/60 uppercase font-bold tracking-wider block font-mono">
-                  Password
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('signup')}
-                  className="text-[10px] text-accent hover:underline font-medium cursor-pointer"
-                >
-                  Forgot?
-                </button>
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" size={16} />
-                <input
-                  id="login-password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="glass-input w-full pl-11"
-                />
-              </div>
-            </div>
+            <motion.button
+              type="button"
+              onClick={handleAppleLogin}
+              whileHover={{ scale: 1.01, y: -1 }}
+              whileTap={{ scale: 0.99 }}
+              className="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-2xl 
+                bg-white/[0.06] backdrop-blur-xl border border-white/12 
+                text-white/90 text-sm font-medium
+                hover:bg-white/[0.1] hover:border-white/20 
+                transition-all duration-200 cursor-pointer
+                shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
+            >
+              <Apple size={20} />
+              <span>Continue with Apple</span>
+            </motion.button>
+          </div>
 
-            <GlowButton type="submit" isLoading={isLoading} className="w-full mt-2" icon={ArrowRight}>
-              Sign In to Suite
-            </GlowButton>
-          </form>
-
-          <div className="relative flex py-6 items-center">
+          {/* Divider */}
+          <div className="relative flex py-4 items-center">
             <div className="flex-grow border-t border-white/8"></div>
-            <span className="flex-shrink mx-4 text-[10px] text-white/30 uppercase font-mono tracking-widest">or demo</span>
+            <span className="flex-shrink mx-4 text-[10px] text-white/30 uppercase font-mono tracking-widest">or continue with</span>
             <div className="flex-grow border-t border-white/8"></div>
           </div>
 
-          <GlowButton 
-            variant="glass" 
-            className="w-full border-primary/30 text-purple-300 hover:text-white" 
-            onClick={handleDemoAccess}
-            icon={Sparkles}
-          >
-            Investor Demo Instant Access
-          </GlowButton>
+          {/* Method Toggle */}
+          <div className="flex gap-2 mb-5">
+            <button
+              type="button"
+              onClick={() => { setAuthMethod('email'); clearError(); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                authMethod === 'email'
+                  ? 'bg-primary/15 border border-primary/40 text-white'
+                  : 'bg-white/[0.03] border border-white/8 text-white/50 hover:text-white/70'
+              }`}
+            >
+              <Mail size={14} />
+              Email
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAuthMethod('phone'); clearError(); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                authMethod === 'phone'
+                  ? 'bg-primary/15 border border-primary/40 text-white'
+                  : 'bg-white/[0.03] border border-white/8 text-white/50 hover:text-white/70'
+              }`}
+            >
+              <Phone size={14} />
+              Phone
+            </button>
+          </div>
 
+          {/* Auth Forms */}
+          <AnimatePresence mode="wait">
+            {authMethod === 'email' ? (
+              <motion.div
+                key="email"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <EmailLogin mode="login" onSubmit={handleEmailLogin} error={error} />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="phone"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <PhoneLogin onLogin={loginWithPhone} onVerify={verifyPhoneOTP} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Footer */}
           <p className="text-center text-xs text-white/50 mt-8">
             Don't have an account?{' '}
-            <button 
-              type="button"
-              className="text-accent font-semibold hover:underline cursor-pointer" 
-              onClick={() => setActiveTab('signup')}
-            >
-              Initialize Profile
-            </button>
+            <Link to="/signup" className="text-accent font-semibold hover:underline">
+              Create Account
+            </Link>
           </p>
         </GlassCard>
       </motion.div>

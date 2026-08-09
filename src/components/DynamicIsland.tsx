@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Activity, Shield, Bell, Cpu, ChevronDown } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import Badge from './Badge';
 
 export default function DynamicIsland() {
-  const { activeTab, setActiveTab, notifications, addToast } = useAppStore();
+  const { notifications, addToast } = useAppStore();
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -68,7 +70,7 @@ export default function DynamicIsland() {
 
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div 
-                onClick={() => { setActiveTab('models'); setIsExpanded(false); }}
+                onClick={() => { navigate('/models'); setIsExpanded(false); }}
                 className="p-3 rounded-2xl bg-white/[0.03] border border-white/8 hover:border-accent/40 transition-colors cursor-pointer space-y-1"
               >
                 <div className="text-white/50 font-mono text-[10px]">AI ROUTER</div>
@@ -78,7 +80,7 @@ export default function DynamicIsland() {
               </div>
 
               <div 
-                onClick={() => { setActiveTab('wellness'); setIsExpanded(false); }}
+                onClick={() => { navigate('/wellness'); setIsExpanded(false); }}
                 className="p-3 rounded-2xl bg-white/[0.03] border border-white/8 hover:border-accent/40 transition-colors cursor-pointer space-y-1"
               >
                 <div className="text-white/50 font-mono text-[10px]">HARMONY VITALS</div>

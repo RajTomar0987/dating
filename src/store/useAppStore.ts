@@ -169,6 +169,7 @@ interface AppState {
   removeToast: (id: string) => void;
   setViewingReportProfileId: (id: string | null) => void;
   setPremiumUser: (status: boolean) => void;
+  resetStore: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -270,34 +271,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isPremiumUser: false,
   viewingReportProfileId: null,
   
-  chatThreads: {
-    "1": [
-      {
-        id: "1",
-        sender: "match",
-        text: "Hey Alex! AI analysis shows our neural compatibility is at 94%. Quite impressive, actually. What are you up to today?",
-        timestamp: "02:15 PM",
-        isRead: true,
-        type: 'text'
-      },
-      {
-        id: "2",
-        sender: "user",
-        text: "Hey Elena! Nice to meet you. I'm just tweaking the code for a new matching system.",
-        timestamp: "02:17 PM",
-        isRead: true,
-        type: 'text'
-      },
-      {
-        id: "3",
-        sender: "match",
-        text: "Perfect. Code is just another medium for design. Have you read the latest research paper on model distillation? It's quite interesting.",
-        timestamp: "02:18 PM",
-        isRead: true,
-        type: 'text'
-      }
-    ]
-  },
+  chatThreads: {},
 
   setUserProfile: (profile) => {
     set({ userProfile: profile });
@@ -307,24 +281,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   likeProfile: (id) => {
     set((state) => {
       if (state.likedProfiles.includes(id)) return {};
-      
-      const matchProfile = state.profiles.find(p => p.id === id);
-      const initialMessage: Message = {
-        id: Math.random().toString(),
-        sender: 'match',
-        text: `Affinity match established! Let's talk about our shared interest in ${matchProfile?.interests[0] || 'life'}.`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isRead: false,
-        type: 'text'
-      };
-
       return {
         likedProfiles: [...state.likedProfiles, id],
-        selectedMatchId: id,
-        chatThreads: {
-          ...state.chatThreads,
-          [id]: [initialMessage]
-        }
+        selectedMatchId: id
       };
     });
 
@@ -425,56 +384,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
 
     ApiClient.sendMessage(matchId, text, type, duration, imageUrl);
-
-    set((state) => ({
-      typingMatches: { ...state.typingMatches, [matchId]: true }
-    }));
-
-    setTimeout(() => {
-      const state = get();
-      const matchProfile = state.profiles.find(p => p.id === matchId);
-      if (!matchProfile) return;
-
-      let replyText = `I'm highly intrigued by that topic. Let's explore it further. What are your core thoughts on it?`;
-      const txt = text.toLowerCase();
-
-      if (matchId === "1") { // Elena
-        if (txt.includes("hello") || txt.includes("hi") || txt.includes("hey")) {
-          replyText = "Hello again. I was just reviewing my neural training runs. How is your day developing?";
-        } else if (txt.includes("ai") || txt.includes("llm") || txt.includes("model") || txt.includes("code")) {
-          replyText = "The mathematics behind attention mechanisms is beautiful. Are you currently optimizing agent behaviors, or working on basic architectural layouts?";
-        } else if (txt.includes("violin") || txt.includes("music") || txt.includes("classical")) {
-          replyText = "Playing the violin teaches you that mechanical precision and creative fluidity are both required for harmony. It's similar to structuring clean algorithms. Do you listen to much Bach?";
-        } else if (txt.includes("date") || txt.includes("meet") || txt.includes("coffee")) {
-          replyText = "A physical sync sounds interesting. Let's select a quiet, design-focused space. Coffee at the museum gardens this weekend?";
-        }
-      } else if (matchId === "2") { // Marcus
-        if (txt.includes("hello") || txt.includes("hi") || txt.includes("hey")) {
-          replyText = "Hey! What's up? Just finishing editing this wild paragliding footage. Hope your day is awesome!";
-        } else if (txt.includes("travel") || txt.includes("film") || txt.includes("camera") || txt.includes("photo")) {
-          replyText = "Travel is all about finding those raw, unedited human moments. My favorite shots are always from Oaxaca. Where is the absolute craziest place you've ever been?";
-        } else if (txt.includes("climb") || txt.includes("sport") || txt.includes("outdoor")) {
-          replyText = "Climbing is the ultimate focus. You just block out the noise. Let's plan an outdoor trip sometime, you down?";
-        }
-      }
-
-      const botMessage: Message = {
-        id: Math.random().toString(),
-        sender: 'match',
-        text: replyText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isRead: false,
-        type: 'text'
-      };
-
-      set((state) => ({
-        typingMatches: { ...state.typingMatches, [matchId]: false },
-        chatThreads: {
-          ...state.chatThreads,
-          [matchId]: [...(state.chatThreads[matchId] || []), botMessage]
-        }
-      }));
-    }, 1800);
   },
 
   reactToMessage: (matchId, messageId, reaction) => {
@@ -640,5 +549,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     a.click();
     URL.revokeObjectURL(url);
     state.addToast('User telemetry & data exported as JSON!', 'system');
-  }
+  },
+
+  resetStore: () => set({
+    likedProfiles: [],
+    selectedMatchId: '',
+    selectedPlannerMatchId: '',
+    chatThreads: {},
+    wingmanHistory: [],
+    typingMatches: {},
+    notifications: [],
+    isPremiumUser: false,
+    viewingReportProfileId: null,
+    showSplash: false,
+    activeTab: 'home',
+  })
 }));

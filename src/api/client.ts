@@ -6,9 +6,15 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 // Helper for authorized fetch
 async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem('aura_jwt_token') || '';
+
+  if (!token) {
+    console.warn(`[API] No auth token available for ${endpoint}`);
+    return null;
+  }
+
   const headers = {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    Authorization: `Bearer ${token}`,
     ...options.headers
   };
 
@@ -17,59 +23,28 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
       ...options,
       headers
     });
+
+    if (res.status === 401) {
+      console.warn(`[API] 401 Unauthorized on ${endpoint}`);
+      return null;
+    }
+
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
     }
     return await res.json();
   } catch (err) {
-    console.warn(`API call ${endpoint} failed, falling back to local client processing`, err);
+    console.warn(`API call ${endpoint} failed:`, err);
     return null;
   }
 }
 
 export const ApiClient = {
-  // Auth
-  async login(email: string, password: string) {
-    // Try Supabase Auth first if configured
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (!error && data.session) {
-        localStorage.setItem('aura_jwt_token', data.session.access_token);
-        return { user: data.user, token: data.session.access_token };
-      }
-    } catch (_) {}
-
-    // Fallback to Express REST API endpoint
-    const result = await apiFetch('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password })
-    });
-    if (result?.token) {
-      localStorage.setItem('aura_jwt_token', result.token);
-    }
-    return result;
+  // Profile
+  async getProfile() {
+    return await apiFetch('/profiles/me');
   },
 
-  async signup(email: string, password: string, name: string) {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { name } }
-      });
-      if (!error && data.session) {
-        localStorage.setItem('aura_jwt_token', data.session.access_token);
-        return { user: data.user, token: data.session.access_token };
-      }
-    } catch (_) {}
-
-    return await apiFetch('/auth/signup', {
-      method: 'POST',
-      body: JSON.stringify({ email, password, name })
-    });
-  },
-
-  // Profile & Photos
   async updateProfile(profileData: Partial<Profile>) {
     return await apiFetch('/profiles/me', {
       method: 'PUT',
@@ -78,7 +53,6 @@ export const ApiClient = {
   },
 
   async uploadPhoto(file: File) {
-    // Try uploading to Supabase Storage `profile-photos` bucket
     try {
       const fileExt = file.name.split('.').pop();
       const filePath = `user_${Date.now()}.${fileExt}`;
@@ -94,8 +68,7 @@ export const ApiClient = {
       }
     } catch (_) {}
 
-    const res = await apiFetch('/profiles/photos', { method: 'POST' });
-    return res?.url || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600';
+    return null;
   },
 
   // Swipes & Likes
@@ -106,19 +79,50 @@ export const ApiClient = {
     });
   },
 
-  // Realtime Messages & Subscriptions
+  // Real User Chat
+  async getMatches() {
+    return await apiFetch('/chats/matches');
+  },
+
+  async getMessages(matchId: string) {
+    return await apiFetch(`/chats/messages/${matchId}`);
+  },
+
   async sendMessage(matchId: string, text: string, type: 'text' | 'voice' | 'photo' = 'text', duration?: string, imageUrl?: string) {
-    return await apiFetch('/chats/messages', {
+    const res = await apiFetch('/chats/messages', {
       method: 'POST',
       body: JSON.stringify({ matchId, text, type, duration, imageUrl })
     });
+
+    if (res?.success && res?.newMessage) {
+      // Broadcast over Supabase Realtime channel for instant cross-tab sync
+      try {
+        const channel = supabase.channel(`realtime_match_${matchId}`);
+        await channel.send({
+          type: 'broadcast',
+          event: 'new_message',
+          payload: res.newMessage
+        });
+      } catch (_) {}
+    }
+
+    return res;
   },
 
+  // Supabase Realtime Subscription for Real User Chat
   subscribeToRealtimeChat(matchId: string, onMessage: (msg: any) => void) {
-    const channel = supabase
-      .channel(`chat_${matchId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-        onMessage(payload.new);
+    const channel = supabase.channel(`realtime_match_${matchId}`);
+
+    channel
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `match_id=eq.${matchId}` }, payload => {
+        if (payload?.new) {
+          onMessage(payload.new);
+        }
+      })
+      .on('broadcast', { event: 'new_message' }, payload => {
+        if (payload?.payload) {
+          onMessage(payload.payload);
+        }
       })
       .subscribe();
 
@@ -127,7 +131,23 @@ export const ApiClient = {
     };
   },
 
-  // AI Cached Reports
+  // AI Companions Chat
+  async getAiCompanions() {
+    return await apiFetch('/chats/ai/companions');
+  },
+
+  async getAiMessages(companionId: string) {
+    return await apiFetch(`/chats/ai/messages/${companionId}`);
+  },
+
+  async sendAiMessage(companionId: string, text: string) {
+    return await apiFetch('/chats/ai/messages', {
+      method: 'POST',
+      body: JSON.stringify({ companionId, text })
+    });
+  },
+
+  // AI Reports
   async getCompatibilityReport(targetId: string, userTraits?: any) {
     const query = userTraits ? `?userTraits=${encodeURIComponent(JSON.stringify(userTraits))}` : '';
     return await apiFetch(`/reports/${targetId}${query}`);
@@ -141,7 +161,7 @@ export const ApiClient = {
     });
   },
 
-  // Subscription Upgrades
+  // Subscriptions
   async upgradeSubscription(planTier: 'free' | 'pro' | 'vip') {
     return await apiFetch('/subscriptions/upgrade', {
       method: 'POST',

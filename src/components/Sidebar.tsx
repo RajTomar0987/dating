@@ -1,14 +1,68 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
+import { useAuth } from '../auth/useAuth';
 import { 
   Heart, Sparkles, Activity, Shield, Calendar, Bot, BarChart3, Lock, 
   BookOpen, Target, ShoppingBag, Gift, Users, Code, Building2, Cpu, 
-  Play, Brain, ShieldCheck, MessageCircle
+  Play, Brain, ShieldCheck, MessageCircle, LogOut
 } from 'lucide-react';
 import Badge from './Badge';
 
+// Map sidebar IDs to URL routes
+const ROUTE_MAP: Record<string, string> = {
+  companion: '/companion',
+  home: '/dashboard',
+  deck: '/discover',
+  chats: '/chat',
+  calendar: '/calendar',
+  emotion: '/emotion',
+  communities: '/communities',
+  safety: '/safety',
+  planner: '/planner',
+  memories: '/memories',
+  goals: '/goals',
+  wellness: '/wellness',
+  journal: '/journal',
+  coach: '/coach',
+  avatar: '/avatar',
+  premium: '/premium',
+  marketplace: '/marketplace',
+  store: '/store',
+  referrals: '/referrals',
+  creators: '/creators',
+  analytics: '/analytics',
+  enterprise: '/enterprise',
+  developer: '/developer',
+  models: '/models',
+  investor: '/investor',
+  admin: '/admin',
+  profile: '/profile',
+  matchmaker: '/matchmaker',
+  wingman: '/wingman',
+  report: '/report',
+  settings: '/settings',
+};
+
+// Reverse map: route → sidebar ID
+function getActiveId(pathname: string): string {
+  for (const [id, route] of Object.entries(ROUTE_MAP)) {
+    if (pathname === route) return id;
+  }
+  return '';
+}
+
 export default function Sidebar() {
-  const { activeTab, setActiveTab, userProfile, isPremiumUser } = useAppStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { userProfile, isPremiumUser } = useAppStore();
+  const { logout, profile } = useAuth();
+  const activeId = getActiveId(location.pathname);
+
+  const navigateTo = (id: string) => {
+    const route = ROUTE_MAP[id];
+    if (route) navigate(route);
+  };
 
   const ecosystemItems = [
     { id: 'companion', name: 'Aura Companion', icon: Bot, badge: 'Flagship AI' },
@@ -54,6 +108,8 @@ export default function Sidebar() {
     { id: 'wellness', name: 'Wellness', icon: Activity }
   ];
 
+  const displayName = profile?.display_name || profile?.first_name || userProfile?.name || 'User';
+
   return (
     <>
       {/* Desktop Sidebar */}
@@ -62,7 +118,7 @@ export default function Sidebar() {
           {/* Logo Brand Header */}
           <div 
             className="flex items-center justify-between cursor-pointer group px-2 py-1 rounded-2xl hover:bg-white/[0.03] transition-colors" 
-            onClick={() => setActiveTab('companion')}
+            onClick={() => navigateTo('companion')}
             role="button"
             tabIndex={0}
             aria-label="Go to AuraAI Command Center"
@@ -90,11 +146,11 @@ export default function Sidebar() {
             <nav className="flex flex-col gap-0.5" aria-label="Ecosystem Navigation">
               {ecosystemItems.map(item => {
                 const Icon = item.icon;
-                const isActive = activeTab === item.id;
+                const isActive = activeId === item.id;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => navigateTo(item.id)}
                     aria-label={`Navigate to ${item.name}`}
                     className={`
                       w-full px-3 py-2 rounded-xl text-left font-medium text-xs flex items-center justify-between transition-all cursor-pointer border
@@ -129,11 +185,11 @@ export default function Sidebar() {
             <nav className="flex flex-col gap-0.5">
               {businessItems.map(item => {
                 const Icon = item.icon;
-                const isActive = activeTab === item.id;
+                const isActive = activeId === item.id;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => navigateTo(item.id)}
                     className={`
                       w-full px-3 py-2 rounded-xl text-left font-medium text-xs flex items-center justify-between transition-all cursor-pointer border
                       ${isActive 
@@ -163,11 +219,11 @@ export default function Sidebar() {
             <nav className="flex flex-col gap-0.5">
               {enterpriseItems.map(item => {
                 const Icon = item.icon;
-                const isActive = activeTab === item.id;
+                const isActive = activeId === item.id;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => navigateTo(item.id)}
                     className={`
                       w-full px-3 py-2 rounded-xl text-left font-medium text-xs flex items-center justify-between transition-all cursor-pointer border
                       ${isActive 
@@ -187,32 +243,42 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* Profile Card Footer */}
-        <div 
-          className="flex items-center gap-3 border-t border-white/8 pt-4 px-2 cursor-pointer group hover:bg-white/[0.03] rounded-2xl p-2 transition-all mt-4" 
-          onClick={() => setActiveTab('profile')}
-          role="button"
-          tabIndex={0}
-          aria-label="View user profile"
-        >
-          <div className="relative">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center font-bold text-xs text-white border border-white/20 shadow-md group-hover:scale-105 transition-transform shrink-0">
-              {userProfile.name.charAt(0)}
+        {/* Profile Card Footer + Logout */}
+        <div className="space-y-2">
+          <div 
+            className="flex items-center gap-3 border-t border-white/8 pt-4 px-2 cursor-pointer group hover:bg-white/[0.03] rounded-2xl p-2 transition-all mt-4" 
+            onClick={() => navigateTo('profile')}
+            role="button"
+            tabIndex={0}
+            aria-label="View user profile"
+          >
+            <div className="relative">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center font-bold text-xs text-white border border-white/20 shadow-md group-hover:scale-105 transition-transform shrink-0">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              {isPremiumUser && (
+                <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-accent text-white text-[8px] flex items-center justify-center font-bold border border-black shadow">
+                  ★
+                </span>
+              )}
             </div>
-            {isPremiumUser && (
-              <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-accent text-white text-[8px] flex items-center justify-center font-bold border border-black shadow">
-                ★
-              </span>
-            )}
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold text-xs text-white truncate group-hover:text-accent transition-colors flex items-center gap-1.5">
+                <span>{displayName}</span>
+              </div>
+              <div className="text-[9px] text-white/40 uppercase font-mono tracking-wider">
+                {isPremiumUser ? 'Aura Pro+' : 'Free Calibration'}
+              </div>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="font-semibold text-xs text-white truncate group-hover:text-accent transition-colors flex items-center gap-1.5">
-              <span>{userProfile.name}</span>
-            </div>
-            <div className="text-[9px] text-white/40 uppercase font-mono tracking-wider">
-              {isPremiumUser ? 'Aura Pro+' : 'Free Calibration'}
-            </div>
-          </div>
+
+          <button
+            onClick={() => logout()}
+            className="w-full flex items-center gap-2.5 px-4 py-2 rounded-xl text-xs text-white/40 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all cursor-pointer"
+          >
+            <LogOut size={14} />
+            <span>Sign Out</span>
+          </button>
         </div>
       </aside>
 
@@ -220,11 +286,11 @@ export default function Sidebar() {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#040408]/95 border-t border-white/10 flex items-center justify-around px-3 z-40 backdrop-blur-2xl shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
         {mobileItems.map(item => {
           const Icon = item.icon;
-          const isActive = activeTab === item.id;
+          const isActive = activeId === item.id;
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => navigateTo(item.id)}
               aria-label={`Navigate to ${item.name}`}
               className={`flex flex-col items-center justify-center gap-1 px-3 py-1 rounded-xl transition-all cursor-pointer ${
                 isActive ? 'text-white scale-105' : 'text-white/40 hover:text-white/70'

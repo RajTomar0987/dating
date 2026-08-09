@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, Volume2, VolumeX, ShieldCheck, ArrowRight, Play } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 export default function SplashScreen() {
-  const { showSplash, setShowSplash, setActiveTab, soundEnabled, toggleSound } = useAppStore();
+  const { showSplash, setShowSplash, soundEnabled, toggleSound } = useAppStore();
+  const navigate = useNavigate();
   const [progress, setProgress] = useState(0);
   const [loadingText, setLoadingText] = useState('Initializing Aura AI Neural Core...');
   const [isCompleted, setIsCompleted] = useState(false);
@@ -86,7 +88,7 @@ export default function SplashScreen() {
       console.warn("[SplashScreen] Safe chime failure handled:", err);
     }
     
-    setActiveTab('home');
+    navigate('/dashboard');
     setShowSplash(false);
   };
 

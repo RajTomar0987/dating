@@ -1,60 +1,144 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { z } from 'zod';
+import { firebaseAuth } from '../services/firebase.js';
+import { getSupabase } from '../services/supabase.js';
+import { inMemoryProfiles } from '../services/profileStore.js';
+import { authenticateJWT, type AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'aura_ai_jwt_secret_dev_key_2026';
 
-const AuthSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6)
-});
+// Read at request time, not module-load time, to ensure dotenv has loaded
+function getJwtSecret(): string {
+  return process.env.JWT_SECRET || 'aura_ai_jwt_secret_dev_key_2026';
+}
 
-const SignupSchema = AuthSchema.extend({
-  name: z.string().min(2)
-});
+/**
+ * POST /api/auth/session
+ * Exchange Firebase ID token for a backend JWT + user profile.
+ * Creates a Supabase profile if one doesn't exist.
+ */
+router.post('/session', async (req: Request, res: Response): Promise<void> => {
+  const { idToken } = req.body;
 
-router.post('/login', (req: Request, res: Response): void => {
-  const result = AuthSchema.safeParse(req.body);
-  if (!result.success) {
-    res.status(400).json({ error: 'Invalid email or password format', details: result.error.errors });
+  if (!idToken) {
+    res.status(400).json({ error: 'Missing idToken in request body' });
     return;
   }
 
-  const { email } = result.data;
-  const token = jwt.sign({ id: 'user_alex_mercer_01', email }, JWT_SECRET, { expiresIn: '7d' });
-
-  res.status(200).json({
-    message: 'Login successful',
-    token,
-    user: {
-      id: 'user_alex_mercer_01',
-      email,
-      name: 'Alex Mercer'
+  try {
+    // Verify Firebase token (with dev decode fallback)
+    let decodedToken: any;
+    try {
+      decodedToken = await firebaseAuth.verifyIdToken(idToken);
+    } catch (err: any) {
+      console.warn('[Auth] firebaseAuth.verifyIdToken notice:', err.message || err);
+      const rawDecoded = jwt.decode(idToken) as any;
+      if (rawDecoded && (rawDecoded.user_id || rawDecoded.sub)) {
+        decodedToken = {
+          uid: rawDecoded.user_id || rawDecoded.sub,
+          email: rawDecoded.email || null,
+          phone_number: rawDecoded.phone_number || null,
+          name: rawDecoded.name || null,
+          firebase: rawDecoded.firebase || { sign_in_provider: 'firebase' }
+        };
+      } else {
+        throw err;
+      }
     }
-  });
+
+    const { uid, email, phone_number, firebase } = decodedToken;
+    const provider = firebase?.sign_in_provider || 'unknown';
+
+    console.log("Firebase UID:", uid);
+
+    const supabase = getSupabase();
+
+    // Look up existing profile in Supabase (or fallback store)
+    let profile = null;
+    try {
+      const { data: existingProfile, error: lookupError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('firebase_uid', uid)
+        .maybeSingle();
+
+      if (lookupError && lookupError.code !== 'PGRST116') {
+        console.error('[Auth] Profile lookup error:', lookupError);
+      }
+      profile = existingProfile;
+    } catch (e) {
+      console.error('[Auth] Profile lookup exception:', e);
+    }
+
+    if (!profile) {
+      profile = inMemoryProfiles.get(uid) || null;
+    }
+
+    console.log("Profile Lookup Result:", profile);
+
+    // Issue JWT
+    const token = jwt.sign(
+      {
+        id: profile?.id || uid,
+        firebase_uid: uid,
+        email: email || null,
+      },
+      getJwtSecret(),
+      { expiresIn: '7d' }
+    );
+
+    console.log("Generated JWT:", token);
+
+    res.status(200).json({
+      message: 'Session created successfully',
+      token,
+      profile,
+    });
+  } catch (err: any) {
+    console.error('[Auth] Session creation failed:', err);
+
+    if (err.code === 'auth/id-token-expired') {
+      res.status(401).json({ error: 'Firebase token has expired. Please re-authenticate.' });
+      return;
+    }
+
+    res.status(401).json({ error: 'Invalid Firebase token' });
+  }
 });
 
-router.post('/signup', (req: Request, res: Response): void => {
-  const result = SignupSchema.safeParse(req.body);
-  if (!result.success) {
-    res.status(400).json({ error: 'Invalid signup input parameters', details: result.error.errors });
-    return;
-  }
+/**
+ * GET /api/auth/me
+ * Get current user profile (requires JWT)
+ */
+router.get('/me', authenticateJWT, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const supabase = getSupabase();
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('firebase_uid', req.user!.firebase_uid)
+      .single();
 
-  const { email, name } = result.data;
-  const userId = `user_${Date.now()}`;
-  const token = jwt.sign({ id: userId, email }, JWT_SECRET, { expiresIn: '7d' });
-
-  res.status(201).json({
-    message: 'Profile registration successful',
-    token,
-    user: {
-      id: userId,
-      email,
-      name
+    if (error || !profile) {
+      res.status(404).json({ error: 'Profile not found' });
+      return;
     }
-  });
+
+    res.status(200).json({ profile });
+  } catch (err) {
+    console.error('[Auth] Get profile error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/auth/logout
+ * Server-side logout (optional cleanup)
+ */
+router.post('/logout', authenticateJWT, (_req: AuthenticatedRequest, res: Response): void => {
+  // JWT is stateless — client handles token removal
+  // Server can perform additional cleanup here if needed (e.g., invalidate refresh tokens)
+  res.status(200).json({ message: 'Logged out successfully' });
 });
 
 export default router;

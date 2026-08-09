@@ -1,11 +1,24 @@
-export interface HeroMatch {
+export interface LiveActivityItem {
+  id: string;
+  icon: string;
+  text: string;
+  timeAgo: string;
+  accentColor: string;
+}
+
+export interface LargeTinderMatch {
   id: string;
   name: string;
   age: number;
-  avatar: string;
+  distance: string;
+  occupation: string;
+  location: string;
+  portrait: string;
+  interests: [string, string]; // exactly two shared interests
   online: boolean;
+  aiReason: string;
   matchScore: number;
-  tag: string;
+  verified: boolean;
 }
 
 export interface StoryItem {
@@ -17,35 +30,52 @@ export interface StoryItem {
   isOnline: boolean;
   timeAgo: string;
   caption: string;
+  isAiRecommended?: boolean;
+  videoUrl?: string;
 }
 
-export interface FeaturedMatch {
+export interface FeaturedCouple {
   id: string;
-  name: string;
-  age: number;
-  distance: string;
-  occupation: string;
+  coupleNames: string;
+  timeMatched: string;
+  photoBefore: string;
+  photoAfter: string;
+  quote: string;
   location: string;
-  bio: string;
-  image: string;
-  interests: string[];
-  compatibility: number;
-  activeNow: boolean;
-  aiReason: string;
-  verified: boolean;
 }
 
-export interface DiscoverCard {
+export interface TrendingItem {
   id: string;
-  name: string;
-  age: number;
-  occupation: string;
+  category: 'cafes' | 'songs' | 'spots' | 'movies' | 'restaurants';
+  title: string;
+  subtitle: string;
   image: string;
-  aspectRatio: string; // for masonry layout
-  conversationStarter: string;
-  location: string;
-  distance: string;
-  interests: string[];
+  icon: string;
+  rating?: string;
+}
+
+export interface ConversationBubble {
+  id: string;
+  icon: string;
+  text: string;
+  personName: string;
+  bgGradient: string;
+}
+
+export interface CompactRecommendation {
+  id: string;
+  icon: string;
+  headline: string;
+  detail: string;
+  color: string;
+}
+
+export interface SocialStreamItem {
+  id: string;
+  userAvatar: string;
+  userName: string;
+  actionText: string;
+  timestamp: string;
 }
 
 export interface TrendingEvent {
@@ -70,21 +100,6 @@ export interface CommunityBubble {
   avatarList: string[];
   activeCount: number;
   topic: string;
-}
-
-export interface RecentMessage {
-  id: string;
-  senderName: string;
-  avatar: string;
-  lastMessage: string;
-  timestamp: string;
-  unreadCount: number;
-  isTyping: boolean;
-  hasVoiceMessage: boolean;
-  voiceDuration?: string;
-  hasPhoto: boolean;
-  photoUrl?: string;
-  isOnline: boolean;
 }
 
 export interface AIWingmanCard {
@@ -116,191 +131,136 @@ export interface UpcomingDate {
 }
 
 // ----------------------------------------------------
-// MOCK DATA (60+ VISIBLE HUMAN FACES)
+// MOCK DATA
 // ----------------------------------------------------
 
-export const HERO_MATCHES: HeroMatch[] = [
-  { id: 'hm1', name: 'Zoe', age: 25, avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600', online: true, matchScore: 99, tag: 'High Sync' },
-  { id: 'hm2', name: 'Elena', age: 26, avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=600', online: true, matchScore: 98, tag: 'AI Curated' },
-  { id: 'hm3', name: 'Marcus', age: 29, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600', online: true, matchScore: 96, tag: 'Creative Vibe' },
-  { id: 'hm4', name: 'Sophia', age: 27, avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600', online: false, matchScore: 95, tag: 'Nearby' },
-  { id: 'hm5', name: 'Devon', age: 28, avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=600', online: true, matchScore: 94, tag: 'Shared Music' },
-  { id: 'hm6', name: 'Aria', age: 24, avatar: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&q=80&w=600', online: true, matchScore: 93, tag: 'Art Lover' },
-  { id: 'hm7', name: 'Lucas', age: 30, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=600', online: false, matchScore: 92, tag: 'Tech Founder' },
-  { id: 'hm8', name: 'Maya', age: 26, avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=600', online: true, matchScore: 91, tag: 'New Profile' }
+export const LIVE_ACTIVITY_TICKER: LiveActivityItem[] = [
+  { id: 'lat1', icon: '❤️', text: 'Emma liked your travel photo in Kyoto', timeAgo: 'Just now', accentColor: '#EC4899' },
+  { id: 'lat2', icon: '💬', text: 'Zoe replied to your spatial architecture question', timeAgo: '2m ago', accentColor: '#3B82F6' },
+  { id: 'lat3', icon: '📅', text: 'Marcus accepted your coffee invitation at Sightglass', timeAgo: '5m ago', accentColor: '#10B981' },
+  { id: 'lat4', icon: '🎵', text: 'Sophia shared a Bach & Nils Frahm playlist', timeAgo: '8m ago', accentColor: '#A855F7' },
+  { id: 'lat5', icon: '📍', text: '14 new people joined nearby in Hayes Valley', timeAgo: '12m ago', accentColor: '#06B6D4' },
+  { id: 'lat6', icon: '✨', text: 'Aura Digital Twin found 3 higher affinity matches', timeAgo: '15m ago', accentColor: '#F59E0B' }
 ];
 
-export const STORIES_DATA: StoryItem[] = [
-  { id: 'st1', name: 'Zoe Hayashi', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1514626585111-d870798f8013?auto=format&fit=crop&q=80&w=800', hasUnviewed: true, isOnline: true, timeAgo: '10m ago', caption: 'Sunset rooftop violins in Hayes Valley ✨ 🎻' },
-  { id: 'st2', name: 'Elena Rostova', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&q=80&w=800', hasUnviewed: true, isOnline: true, timeAgo: '25m ago', caption: 'Late night espresso & model training ☕️ 🧠' },
-  { id: 'st3', name: 'Marcus Vance', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&q=80&w=800', hasUnviewed: true, isOnline: true, timeAgo: '1h ago', caption: 'Bouldering high above the Valley clouds 🧗‍♂️ 🌲' },
-  { id: 'st4', name: 'Sophia Chen', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&q=80&w=800', hasUnviewed: false, isOnline: false, timeAgo: '3h ago', caption: 'SF MoMA modern art walkthrough 🎨' },
-  { id: 'st5', name: 'Chloe Vance', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=800', hasUnviewed: true, isOnline: true, timeAgo: '4h ago', caption: 'Listening to vinyls on rainy afternoons 🎶' },
-  { id: 'st6', name: 'Julian Cross', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=800', hasUnviewed: false, isOnline: true, timeAgo: '5h ago', caption: 'Chef tasting menu testing session 🍷 🍽️' },
-  { id: 'st7', name: 'Freya Lindquist', avatar: 'https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=800', hasUnviewed: true, isOnline: false, timeAgo: '6h ago', caption: 'Tokyo photo walk highlights 📷 ✨' },
-  { id: 'st8', name: 'Noah Bennett', avatar: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?auto=format&fit=crop&q=80&w=800', hasUnviewed: true, isOnline: true, timeAgo: '7h ago', caption: 'Morning surf session at Ocean Beach 🏄‍♂️' }
-];
-
-export const FEATURED_MATCHES: FeaturedMatch[] = [
+export const LARGE_TINDER_MATCHES: LargeTinderMatch[] = [
   {
-    id: 'fm1',
+    id: 'ltm1',
     name: 'Elena Rostova',
     age: 26,
     distance: '2 miles away',
-    occupation: 'AI Scientist & Classical Violinist',
+    occupation: 'AI Scientist & Violinist',
     location: 'San Francisco, CA',
-    bio: 'Training neural architectures by day, performing Bach sonatas by night. Looking for deep conversations, dark roast pour-overs, and spontaneous gallery strolls.',
-    image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=800',
-    interests: ['AI Research', 'Violin', 'Dark Roast Coffee', 'Cyberpunk Aesthetics'],
-    compatibility: 98,
-    activeNow: true,
-    aiReason: '98% Synergy: You both love deep focus work, minimalist design, and classical music.',
+    portrait: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=800',
+    interests: ['AI Research', 'Violin Sonatas'],
+    online: true,
+    aiReason: '98% Synergy: You both value deep focus hours, minimalist design & classical music.',
+    matchScore: 98,
     verified: true
   },
   {
-    id: 'fm2',
+    id: 'ltm2',
     name: 'Zoe Hayashi',
     age: 25,
     distance: '4 miles away',
-    occupation: 'Architect & Generative Artist',
+    occupation: 'Spatial Architect & Artist',
     location: 'Oakland, CA',
-    bio: 'Designing eco-futuristic pavilions in VR. Passionate about Japanese tea ceremonies, ambient synth pop, and weekend coastal road trips.',
-    image: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=800',
-    interests: ['Spatial Design', 'Generative Art', 'Tea Ceremony', 'Synth Pop'],
-    compatibility: 96,
-    activeNow: true,
-    aiReason: '96% Synergy: Perfect match for spatial computing, aesthetics, and quiet dates.',
+    portrait: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=800',
+    interests: ['Generative Art', 'Tea Ceremony'],
+    online: true,
+    aiReason: '96% Synergy: Perfect match for spatial VR design & quiet ambient music dates.',
+    matchScore: 96,
     verified: true
   },
   {
-    id: 'fm3',
+    id: 'ltm3',
     name: 'Marcus Vance',
     age: 29,
     distance: '3 miles away',
-    occupation: 'Documentary Director & Boulderer',
+    occupation: 'Documentary Filmmaker',
     location: 'San Francisco, CA',
-    bio: 'Capturing human resilience across the globe. Off camera, you will find me bouldering in Yosemite or experimenting with sourdough fermentation.',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800',
-    interests: ['Cinematography', 'Climbing', 'Analog Film', 'Sourdough'],
-    compatibility: 95,
-    activeNow: true,
-    aiReason: '95% Synergy: High adventurous resonance and shared passion for storytelling.',
+    portrait: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800',
+    interests: ['35mm Film', 'Yosemite Climb'],
+    online: true,
+    aiReason: '95% Synergy: Shared passion for storytelling, documentary cinema & outdoors.',
+    matchScore: 95,
     verified: true
   },
   {
-    id: 'fm4',
+    id: 'ltm4',
     name: 'Sophia Chen',
     age: 27,
     distance: '1 mile away',
     occupation: 'Neurotech Lead & Pianist',
     location: 'San Francisco, CA',
-    bio: 'Building brain-computer interfaces to amplify human empathy. Big fan of jazz clubs, indie films, and rooftop stargazing with hot chocolate.',
-    image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=800',
-    interests: ['Neuroscience', 'Jazz Piano', 'Indie Cinema', 'Stargazing'],
-    compatibility: 94,
-    activeNow: false,
-    aiReason: '94% Synergy: Shared passion for empathetic tech and nocturnal creative pursuits.',
+    portrait: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=800',
+    interests: ['Neuroscience', 'Jazz Piano'],
+    online: false,
+    aiReason: '94% Synergy: Shared interest in empathetic technology & nocturnal music sessions.',
+    matchScore: 94,
     verified: true
   }
 ];
 
-export const DISCOVER_MASONRY: DiscoverCard[] = [
+export const STORIES_DATA: StoryItem[] = [
+  { id: 'st1', name: 'Zoe Hayashi', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1514626585111-d870798f8013?auto=format&fit=crop&q=80&w=800', hasUnviewed: true, isOnline: true, timeAgo: '10m ago', caption: 'Sunset rooftop violins in Hayes Valley ✨ 🎻', isAiRecommended: true },
+  { id: 'st2', name: 'Elena Rostova', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&q=80&w=800', hasUnviewed: true, isOnline: true, timeAgo: '25m ago', caption: 'Late night espresso & model training ☕️ 🧠', isAiRecommended: true },
+  { id: 'st3', name: 'Marcus Vance', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&q=80&w=800', hasUnviewed: true, isOnline: true, timeAgo: '1h ago', caption: 'Bouldering high above the Valley clouds 🧗‍♂️ 🌲' },
+  { id: 'st4', name: 'Sophia Chen', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&q=80&w=800', hasUnviewed: false, isOnline: false, timeAgo: '3h ago', caption: 'SF MoMA modern art walkthrough 🎨' },
+  { id: 'st5', name: 'Chloe Vance', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=800', hasUnviewed: true, isOnline: true, timeAgo: '4h ago', caption: 'Listening to vinyls on rainy afternoons 🎶' },
+  { id: 'st6', name: 'Julian Cross', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=800', hasUnviewed: false, isOnline: true, timeAgo: '5h ago', caption: 'Chef tasting menu testing session 🍷 🍽️' }
+];
+
+export const SOCIAL_STREAM: SocialStreamItem[] = [
+  { id: 'ss1', userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200', userName: 'Marcus V.', actionText: 'posted a new Yosemite hiking photo', timestamp: '1m ago' },
+  { id: 'ss2', userAvatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=200', userName: 'Sophia C.', actionText: 'joined Coffee Chemistry Hub', timestamp: '3m ago' },
+  { id: 'ss3', userAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200', userName: 'Elena R.', actionText: 'started typing a voice message...', timestamp: '4m ago' },
+  { id: 'ss4', userAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200', userName: 'David L.', actionText: 'is attending Secret Speakeasy Jazz Night', timestamp: '7m ago' },
+  { id: 'ss5', userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200', userName: 'Luna M.', actionText: 'uploaded a 28s voice intro note', timestamp: '10m ago' },
+  { id: 'ss6', userAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200', userName: 'Zoe H.', actionText: 'is checked in nearby at Sightglass', timestamp: '12m ago' }
+];
+
+export const FEATURED_COUPLES: FeaturedCouple[] = [
   {
-    id: 'dm1',
-    name: 'Amara Vance',
-    age: 26,
-    occupation: 'Sound Designer',
-    image: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80&w=800',
-    aspectRatio: 'aspect-[3/4]',
-    conversationStarter: 'Ask about her spatial audio installation at De Young Museum 🎧',
-    location: 'San Francisco, CA',
-    distance: '3 miles away',
-    interests: ['Spatial Audio', 'Modular Synths', 'Botanical Gardens']
+    id: 'fc1',
+    coupleNames: 'Elena & Raj',
+    timeMatched: 'Matched 6 months ago through Aura',
+    photoBefore: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=400',
+    photoAfter: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=800',
+    quote: '“We matched over a shared passion for Bach sonatas and dark roast coffee. Now we co-live in Hayes Valley!”',
+    location: 'San Francisco, CA'
   },
   {
-    id: 'dm2',
-    name: 'Julian Cross',
-    age: 28,
-    occupation: 'Culinary Innovator',
-    image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=800',
-    aspectRatio: 'aspect-[4/5]',
-    conversationStarter: 'Break the ice with his favorite secret ramen bar in Japan Town 🍜',
-    location: 'Oakland, CA',
-    distance: '5 miles away',
-    interests: ['Molecular Gastronomy', 'Natural Wine', 'Fermentation']
-  },
-  {
-    id: 'dm3',
-    name: 'Camila Santos',
-    age: 25,
-    occupation: 'Fashion Creative Director',
-    image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=800',
-    aspectRatio: 'aspect-[3/4]',
-    conversationStarter: 'Mention your favorite vintage thrift spot in Mission District 👗',
-    location: 'San Francisco, CA',
-    distance: '1 mile away',
-    interests: ['Vintage Fashion', 'Editorial Styling', 'Film Photography']
-  },
-  {
-    id: 'dm4',
-    name: 'Noah Bennett',
-    age: 29,
-    occupation: 'Oceanographer & Surfer',
-    image: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&q=80&w=800',
-    aspectRatio: 'aspect-[4/5]',
-    conversationStarter: 'Ask about his recent marine conservation expedition to Fiji 🌊',
-    location: 'Pacifica, CA',
-    distance: '8 miles away',
-    interests: ['Surfing', 'Marine Biology', 'Sunset Campfires']
-  },
-  {
-    id: 'dm5',
-    name: 'Freya Lindquist',
-    age: 27,
-    occupation: 'Nordic Interior Architect',
-    image: 'https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?auto=format&fit=crop&q=80&w=800',
-    aspectRatio: 'aspect-[3/4]',
-    conversationStarter: 'Discuss mid-century modern furniture design over matcha lattes 🛋️',
-    location: 'San Francisco, CA',
-    distance: '2 miles away',
-    interests: ['Minimalism', 'Ceramics', 'Matcha', 'Scandi Design']
-  },
-  {
-    id: 'dm6',
-    name: 'Mateo Rossi',
-    age: 30,
-    occupation: 'Industrial Designer',
-    image: 'https://images.unsplash.com/photo-1513956589380-bad6acb9b9d4?auto=format&fit=crop&q=80&w=800',
-    aspectRatio: 'aspect-[4/5]',
-    conversationStarter: 'Ask about his handmade leather bag craftsmanship project 🎒',
-    location: 'Oakland, CA',
-    distance: '4 miles away',
-    interests: ['Leatherwork', 'Espresso Machines', 'Italian Cinema']
-  },
-  {
-    id: 'dm7',
-    name: 'Hana Tanaka',
-    age: 24,
-    occupation: 'Ceramic Sculptor & Illustrator',
-    image: 'https://images.unsplash.com/photo-1548142813-c348350df52b?auto=format&fit=crop&q=80&w=800',
-    aspectRatio: 'aspect-[3/4]',
-    conversationStarter: 'Comment on her hand-painted pottery studio collection 🏺',
-    location: 'Berkeley, CA',
-    distance: '6 miles away',
-    interests: ['Pottery', 'Manga Art', 'Tea Culture']
-  },
-  {
-    id: 'dm8',
-    name: 'Nora Sterling',
-    age: 27,
-    occupation: 'Astrophysicist & Poet',
-    image: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&q=80&w=800',
-    aspectRatio: 'aspect-[4/5]',
-    conversationStarter: 'Ask about her observatory telescope night session 🌌',
-    location: 'San Francisco, CA',
-    distance: '3 miles away',
-    interests: ['Cosmology', 'Spoken Word', 'Boba Tea']
+    id: 'fc2',
+    coupleNames: 'Marcus & Zoe',
+    timeMatched: 'Matched 8 months ago through Aura',
+    photoBefore: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400',
+    photoAfter: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&q=80&w=800',
+    quote: '“Started with a 35mm photo walk in Chinatown, now planning our trip to Kyoto together.”',
+    location: 'Oakland, CA'
   }
+];
+
+export const TRENDING_THIS_WEEK: TrendingItem[] = [
+  { id: 't1', category: 'cafes', title: 'Sightglass Coffee Roastery', subtitle: '8 active matches checked in today', image: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&q=80&w=400', icon: '🔥', rating: '4.9 ★' },
+  { id: 't2', category: 'songs', title: 'Says by Nils Frahm', subtitle: 'Top played track among 98% matches', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&q=80&w=400', icon: '🎵' },
+  { id: 't3', category: 'spots', title: 'Lands End Sunset Trail', subtitle: 'Most recommended weekend outdoor date', image: 'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&q=80&w=400', icon: '📸', rating: '4.8 ★' },
+  { id: 't4', category: 'movies', title: 'Interstellar 35mm Screening', subtitle: 'Trending movie date choice this week', image: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=400', icon: '🎬' },
+  { id: 't5', category: 'restaurants', title: 'Bourbon & Branch Speakeasy', subtitle: 'Favorite spot for quiet cocktail dates', image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=400', icon: '🍜', rating: '4.9 ★' }
+];
+
+export const CONVERSATION_BUBBLES: ConversationBubble[] = [
+  { id: 'cb1', icon: '💬', text: 'Ask about her Kyoto ryokan tea trip', personName: 'Elena', bgGradient: 'from-pink-600/80 to-purple-700/80' },
+  { id: 'cb2', icon: '🎵', text: 'Share a Nils Frahm ambient playlist', personName: 'Sophia', bgGradient: 'from-purple-600/80 to-indigo-700/80' },
+  { id: 'cb3', icon: '☕', text: 'Invite for cortados at Sightglass', personName: 'Zoe', bgGradient: 'from-amber-600/80 to-orange-700/80' },
+  { id: 'cb4', icon: '🎬', text: 'Recommend the 35mm film screening', personName: 'Marcus', bgGradient: 'from-cyan-600/80 to-blue-700/80' }
+];
+
+export const COMPACT_AI_RECOMMENDATIONS: CompactRecommendation[] = [
+  { id: 'cr1', icon: '✨', headline: 'Optimal Response Window', detail: 'Best time to message Elena is around 8:15 PM after focus hours.', color: '#10B981' },
+  { id: 'cr2', icon: '❤️', headline: 'Music Preference Overlap', detail: 'Elena loves Nils Frahm, Bach, and Kiasmos synth pop.', color: '#EC4899' },
+  { id: 'cr3', icon: '☕', headline: 'Top Date Location', detail: 'Favorite pour-over café: Sightglass Coffee on 7th St.', color: '#F59E0B' },
+  { id: 'cr4', icon: '🌍', headline: 'Dream Trip Shared', detail: 'You both have Kyoto autumn tea gardens on your wishlist.', color: '#3B82F6' }
 ];
 
 export const TRENDING_EVENTS: TrendingEvent[] = [
@@ -314,8 +274,7 @@ export const TRENDING_EVENTS: TrendingEvent[] = [
     attendees: [
       'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=600',
       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=600'
+      'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600'
     ],
     spotsLeft: 4,
     hostName: 'Elena R.',
@@ -330,45 +289,11 @@ export const TRENDING_EVENTS: TrendingEvent[] = [
     image: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&q=80&w=800',
     attendees: [
       'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1548142813-c348350df52b?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?auto=format&fit=crop&q=80&w=600'
+      'https://images.unsplash.com/photo-1548142813-c348350df52b?auto=format&fit=crop&q=80&w=600'
     ],
     spotsLeft: 2,
     hostName: 'Zoe H.',
     hostAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600'
-  },
-  {
-    id: 'te3',
-    title: 'Golden Gate Sunset Film & Analog Photo Walk',
-    category: 'Photography',
-    date: 'Sunday • 5:30 PM',
-    location: 'Lands End Trail, SF',
-    image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=800',
-    attendees: [
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&q=80&w=600'
-    ],
-    spotsLeft: 6,
-    hostName: 'Marcus V.',
-    hostAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600'
-  },
-  {
-    id: 'te4',
-    title: 'Sonoma Organic Wine & Tapas Pairing',
-    category: 'Travel',
-    date: 'Next Weekend • All Day',
-    location: 'Sonoma Valley Estate',
-    image: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&q=80&w=800',
-    attendees: [
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&q=80&w=600'
-    ],
-    spotsLeft: 3,
-    hostName: 'Julian C.',
-    hostAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=600'
   }
 ];
 
@@ -381,8 +306,7 @@ export const COMMUNITY_BUBBLES: CommunityBubble[] = [
     accentColor: '#EC4899',
     avatarList: [
       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?auto=format&fit=crop&q=80&w=600'
+      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=600'
     ],
     activeCount: 42,
     topic: 'Leica M6 vs Contax T2 for street portraits'
@@ -395,120 +319,10 @@ export const COMMUNITY_BUBBLES: CommunityBubble[] = [
     accentColor: '#3B82F6',
     avatarList: [
       'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600'
+      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=600'
     ],
     activeCount: 88,
     topic: 'Autonomous agent design & spatial interfaces'
-  },
-  {
-    id: 'cb3',
-    name: 'Tokyo & Kyoto Travelers',
-    membersCount: '980 members',
-    bgGradient: 'from-rose-900/60 via-purple-900/40 to-amber-900/60',
-    accentColor: '#F43F5E',
-    avatarList: [
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1548142813-c348350df52b?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&q=80&w=600'
-    ],
-    activeCount: 31,
-    topic: 'Hidden ryokans in Arashiyama bamboo forest'
-  },
-  {
-    id: 'cb4',
-    name: 'Coffee Chemistry & Pour Overs',
-    membersCount: '1.8k members',
-    bgGradient: 'from-amber-900/60 via-orange-900/40 to-yellow-900/60',
-    accentColor: '#F59E0B',
-    avatarList: [
-      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1513956589380-bad6acb9b9d4?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&q=80&w=600'
-    ],
-    activeCount: 56,
-    topic: 'Single-origin Ethiopian Gesha brewing ratios'
-  },
-  {
-    id: 'cb5',
-    name: 'Anime & Cyberpunk Aesthetics',
-    membersCount: '3.4k members',
-    bgGradient: 'from-fuchsia-900/60 via-purple-900/40 to-cyan-900/60',
-    accentColor: '#D946EF',
-    avatarList: [
-      'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600'
-    ],
-    activeCount: 112,
-    topic: 'Ghost in the Shell & Akira architectural analysis'
-  },
-  {
-    id: 'cb6',
-    name: 'Mindful Bouldering & Outdoors',
-    membersCount: '1.2k members',
-    bgGradient: 'from-emerald-900/60 via-teal-900/40 to-cyan-900/60',
-    accentColor: '#10B981',
-    avatarList: [
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80&w=600'
-    ],
-    activeCount: 29,
-    topic: 'Weekend V7 boulder session in Bishop'
-  }
-];
-
-export const RECENT_MESSAGES: RecentMessage[] = [
-  {
-    id: 'rm1',
-    senderName: 'Elena Rostova',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=600',
-    lastMessage: 'Listen to this Bach violin excerpt I recorded! Let me know if you want to get coffee before the gallery exhibit.',
-    timestamp: '2m ago',
-    unreadCount: 2,
-    isTyping: true,
-    hasVoiceMessage: true,
-    voiceDuration: '0:42',
-    hasPhoto: false,
-    isOnline: true
-  },
-  {
-    id: 'rm2',
-    senderName: 'Zoe Hayashi',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600',
-    lastMessage: 'Here is the 3D pavilion render I mentioned yesterday ✨',
-    timestamp: '15m ago',
-    unreadCount: 1,
-    isTyping: false,
-    hasVoiceMessage: false,
-    hasPhoto: true,
-    photoUrl: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&q=80&w=600',
-    isOnline: true
-  },
-  {
-    id: 'rm3',
-    senderName: 'Marcus Vance',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600',
-    lastMessage: 'Just finished editing the Yosemite documentary preview! When are you free to grab tacos in Mission?',
-    timestamp: '1h ago',
-    unreadCount: 0,
-    isTyping: false,
-    hasVoiceMessage: false,
-    hasPhoto: false,
-    isOnline: true
-  },
-  {
-    id: 'rm4',
-    senderName: 'Sophia Chen',
-    avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600',
-    lastMessage: 'That jazz piano spot on Friday sounds perfect. I reserved a corner table for us!',
-    timestamp: '3h ago',
-    unreadCount: 0,
-    isTyping: false,
-    hasVoiceMessage: false,
-    hasPhoto: false,
-    isOnline: false
   }
 ];
 
@@ -516,46 +330,13 @@ export const AI_WINGMAN_CARDS: AIWingmanCard[] = [
   {
     id: 'wc1',
     type: 'interaction',
-    personName: 'Emily Rostova',
+    personName: 'Elena Rostova',
     personAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=600',
-    headline: 'Emily smiled at your last voice message about classical music.',
+    headline: 'Elena smiled at your last voice message about classical music.',
     timestamp: 'Just now',
     suggestedAction: 'Ask her out to the SF Symphony preview next Thursday.',
     actionType: 'coffee',
     accentColor: '#10B981'
-  },
-  {
-    id: 'wc2',
-    type: 'interaction',
-    personName: 'Marcus Vance',
-    personAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600',
-    headline: 'Marcus viewed your profile photos and liked your Yosemite trip highlight.',
-    timestamp: '12m ago',
-    suggestedAction: 'Send Marcus a recommendation for the new climbing gym in Dogpatch.',
-    actionType: 'message',
-    accentColor: '#3B82F6'
-  },
-  {
-    id: 'wc3',
-    type: 'interaction',
-    personName: 'Sophia Chen',
-    personAvatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600',
-    headline: 'Sophia liked your photo at the De Young Art Exhibition.',
-    timestamp: '45m ago',
-    suggestedAction: 'Send Sophia an invite for oat cortados at Sightglass Coffee.',
-    actionType: 'coffee',
-    accentColor: '#EC4899'
-  },
-  {
-    id: 'wc4',
-    type: 'recommendation',
-    personName: 'Zoe Hayashi',
-    personAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600',
-    headline: 'Recommended: Send Zoe a coffee invite for Saturday morning.',
-    timestamp: 'AI Insight',
-    suggestedAction: 'High 99% compatibility match detected in your neighborhood.',
-    actionType: 'coffee',
-    accentColor: '#F59E0B'
   }
 ];
 
@@ -574,20 +355,5 @@ export const UPCOMING_DATES: UpcomingDate[] = [
     weather: { temp: '68°F', condition: 'Sunny & Crisp', icon: '☀️' },
     mapImage: 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&q=80&w=600',
     bgImage: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&q=80&w=800'
-  },
-  {
-    id: 'ud2',
-    partnerName: 'Zoe Hayashi',
-    partnerAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600',
-    partnerAge: 25,
-    type: 'Museum',
-    locationName: 'SF MoMA Spatial Design Exhibit',
-    address: '151 3rd St, San Francisco, CA',
-    date: 'Sunday, Aug 9',
-    time: '2:00 PM',
-    countdown: 'In 4 days',
-    weather: { temp: '72°F', condition: 'Clear Sky', icon: '🌤️' },
-    mapImage: 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&q=80&w=600',
-    bgImage: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&q=80&w=800'
   }
 ];

@@ -8,7 +8,7 @@ import ParticleBg from '../components/ParticleBg';
 import GlassCard from '../components/GlassCard';
 import GlowButton from '../components/GlowButton';
 import Badge from '../components/Badge';
-import { useAppStore } from '../store/useAppStore';
+import { useNavigate } from 'react-router-dom';
 
 // Custom smooth animated counter for React 19 compatibility
 function CountUp({ end, duration = 2, suffix = '', decimals = 0 }: { end: number; duration?: number; suffix?: string; decimals?: number }) {
@@ -38,7 +38,7 @@ function CountUp({ end, duration = 2, suffix = '', decimals = 0 }: { end: number
 }
 
 export default function Landing() {
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
+  const navigate = useNavigate();
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
   const toggleFaq = (index: number) => {
@@ -178,7 +178,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div 
             className="flex items-center gap-3 cursor-pointer group" 
-            onClick={() => setActiveTab('landing')}
+            onClick={() => navigate('/')}
             role="button"
             tabIndex={0}
           >
@@ -200,13 +200,13 @@ export default function Landing() {
           <div className="flex items-center gap-4">
             <button 
               className="text-sm font-medium text-white/80 hover:text-white cursor-pointer px-3 py-1.5 rounded-xl hover:bg-white/5 transition-colors"
-              onClick={() => setActiveTab('login')}
+              onClick={() => navigate('/login')}
             >
               Sign In
             </button>
             <GlowButton 
               size="sm"
-              onClick={() => setActiveTab('signup')}
+              onClick={() => navigate('/signup')}
             >
               Get Started
             </GlowButton>
@@ -258,10 +258,10 @@ export default function Landing() {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="flex flex-wrap gap-4"
             >
-              <GlowButton onClick={() => setActiveTab('signup')} icon={ArrowRight} size="lg">
+              <GlowButton onClick={() => navigate('/signup')} icon={ArrowRight} size="lg">
                 Get Started
               </GlowButton>
-              <GlowButton variant="secondary" onClick={() => setActiveTab('deck')} icon={Play} size="lg">
+              <GlowButton variant="secondary" onClick={() => navigate('/login')} icon={Play} size="lg">
                 Explore Discover Deck
               </GlowButton>
             </motion.div>
@@ -566,7 +566,7 @@ export default function Landing() {
                 <GlowButton 
                   variant={tier.glow ? 'primary' : 'secondary'}
                   className="w-full text-sm"
-                  onClick={() => setActiveTab('signup')}
+                  onClick={() => navigate('/signup')}
                 >
                   Unlock {tier.name}
                 </GlowButton>
@@ -645,8 +645,8 @@ export default function Landing() {
               <h5 className="font-display font-bold text-xs uppercase tracking-wider text-purple-300 mb-4 font-mono">Support</h5>
               <ul className="space-y-2 text-xs text-white/50 font-sans">
                 <li><a href="#faq" className="hover:text-white transition-colors">FAQ Help</a></li>
-                <li><span className="hover:text-white cursor-pointer transition-colors" onClick={() => setActiveTab('settings')}>Terms</span></li>
-                <li><span className="hover:text-white cursor-pointer transition-colors" onClick={() => setActiveTab('settings')}>Privacy</span></li>
+                <li><span className="hover:text-white cursor-pointer transition-colors" onClick={() => navigate('/settings')}>Terms</span></li>
+                <li><span className="hover:text-white cursor-pointer transition-colors" onClick={() => navigate('/settings')}>Privacy</span></li>
               </ul>
             </div>
 

@@ -1,9 +1,17 @@
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load .env BEFORE any other imports so process.env is populated
+// when route/middleware modules read env vars at module level.
+// The .env lives at the workspace root (../), not in server/.
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
+dotenv.config(); // Also try CWD for server-local .env overrides
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
 
 import healthRoute from './routes/health.js';
 import authRoute from './routes/auth.js';
@@ -15,8 +23,6 @@ import wingmanRoute from './routes/wingman.js';
 import subscriptionsRoute from './routes/subscriptions.js';
 import plannerRoute from './routes/planner.js';
 import { authenticateJWT } from './middleware/auth.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
