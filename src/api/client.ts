@@ -79,6 +79,19 @@ export const ApiClient = {
     });
   },
 
+  async getDiscoverProfiles() {
+    return await apiFetch('/profiles/discover');
+  },
+
+  // Notifications
+  async getNotifications() {
+    return await apiFetch('/notifications');
+  },
+
+  async markNotificationsRead() {
+    return await apiFetch('/notifications/read', { method: 'POST' });
+  },
+
   // Real User Chat
   async getMatches() {
     return await apiFetch('/chats/matches');

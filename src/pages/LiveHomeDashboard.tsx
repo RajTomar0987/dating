@@ -10,6 +10,7 @@ import {
 import Sidebar from '../components/Sidebar';
 import ParticleBg from '../components/ParticleBg';
 import { useAppStore } from '../store/useAppStore';
+import { useAuth } from '../auth/useAuth';
 import {
   LIVE_ACTIVITY_TICKER,
   LARGE_TINDER_MATCHES,
@@ -97,12 +98,15 @@ export default function LiveHomeDashboard() {
   // Carousel Ref
   const eventCarouselRef = useRef<HTMLDivElement>(null);
 
+  const { profile, firebaseUser } = useAuth();
+
   // Time-based Greeting
   const getGreeting = () => {
+    const name = profile?.display_name || profile?.first_name || firebaseUser?.displayName || 'User';
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning, Raj 👋';
-    if (hour < 18) return 'Good Afternoon, Raj 👋';
-    return 'Good Evening, Raj 👋';
+    if (hour < 12) return `Good Morning, ${name} 👋`;
+    if (hour < 18) return `Good Afternoon, ${name} 👋`;
+    return `Good Evening, ${name} 👋`;
   };
 
   // Auto-cycle Live Activity Ticker every 4 seconds

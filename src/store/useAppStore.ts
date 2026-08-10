@@ -149,6 +149,7 @@ interface AppState {
   exportUserDataJson: () => void;
 
   setUserProfile: (profile: Profile) => void;
+  setDiscoverProfiles: (profiles: Profile[]) => void;
   likeProfile: (id: string) => void;
   dislikeProfile: (id: string) => void;
   setActiveTab: (tab: string) => void;
@@ -175,9 +176,9 @@ interface AppState {
 export const useAppStore = create<AppState>((set, get) => ({
   userProfile: userDefaultProfile as unknown as Profile,
   profiles: mockProfiles,
-  likedProfiles: ["1"], // Pre-match with Elena
-  selectedMatchId: "1",
-  selectedPlannerMatchId: "1",
+  likedProfiles: [],
+  selectedMatchId: "",
+  selectedPlannerMatchId: "",
   activeTab: "home",
   
   // V4 Experience & Splash
@@ -277,6 +278,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ userProfile: profile });
     ApiClient.updateProfile(profile);
   },
+  
+  setDiscoverProfiles: (profiles) => set({ profiles }),
   
   likeProfile: (id) => {
     set((state) => {

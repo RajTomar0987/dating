@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Mic, Sparkles, Heart, MessageCircle, Eye, ShieldCheck, MapPin, 
@@ -9,6 +9,7 @@ import {
 import Sidebar from '../components/Sidebar';
 import ParticleBg from '../components/ParticleBg';
 import { useAppStore } from '../store/useAppStore';
+import { ApiClient } from '../api/client';
 import {
   CATEGORIES,
   DISCOVER_FEED,
@@ -95,9 +96,53 @@ export default function SwipeDeck() {
   // Social Interaction States
   const [likedMap, setLikedMap] = useState<Record<string, boolean>>({});
   const [activeReelPlaying, setActiveReelPlaying] = useState<string | null>(null);
+  const [realProfilesFeed, setRealProfilesFeed] = useState<any[]>([]);
+
+  // Load real user profiles from database for discovery
+  useEffect(() => {
+    let isMounted = true;
+    ApiClient.getDiscoverProfiles().then(res => {
+      if (res?.profiles && res.profiles.length > 0 && isMounted) {
+        const formattedProfiles = res.profiles.map((p: any) => ({
+          id: p.id,
+          type: 'profile' as const,
+          category: 'profile',
+          name: p.name,
+          age: p.age,
+          occupation: p.occupation,
+          distance: p.location || 'Nearby',
+          image: p.images?.[0] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+          compatibility: p.compatibilityScore || 94,
+          verified: true,
+          hasVoiceIntro: false,
+          voiceDuration: '0:15',
+          introText: p.bio || 'Hello! Looking for meaningful connections.',
+          interests: p.interests || ['Travel', 'Music']
+        }));
+        setRealProfilesFeed(formattedProfiles);
+      }
+    });
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleLikeItem = async (itemId: string, name: string) => {
+    setLikedMap(prev => ({ ...prev, [itemId]: true }));
+    const res = await ApiClient.recordSwipe(itemId, 'like');
+    if (res?.isMatch) {
+      addToast(`🎉 IT'S A MATCH with ${name}! You can now chat!`, 'match');
+      if (res?.match?.id) {
+        setSelectedMatchId(res.match.id);
+      }
+    } else {
+      addToast(`Sent a like to ${name}! ✨`, 'like');
+    }
+  };
+
+  // Combine real database profiles with static feed items
+  const combinedFeed = [...realProfilesFeed, ...DISCOVER_FEED];
 
   // Filter feed by search query & category
-  const filteredFeed = DISCOVER_FEED.filter(item => {
+  const filteredFeed = combinedFeed.filter(item => {
     const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
     if (!searchQuery.trim()) return matchesCategory;
 
@@ -106,7 +151,7 @@ export default function SwipeDeck() {
       return matchesCategory && (
         item.name.toLowerCase().includes(query) ||
         item.occupation.toLowerCase().includes(query) ||
-        item.interests.some(i => i.toLowerCase().includes(query))
+        item.interests.some((i: string) => i.toLowerCase().includes(query))
       );
     }
     if (item.type === 'reel') {
@@ -151,13 +196,7 @@ export default function SwipeDeck() {
     setAiPromptInput('');
   };
 
-  const handleLikeItem = (id: string, name: string) => {
-    const isLiked = !likedMap[id];
-    setLikedMap(prev => ({ ...prev, [id]: isLiked }));
-    if (isLiked) {
-      addToast(`Sent a secret crush heart to ${name}! ✨`, 'match');
-    }
-  };
+
 
   const toggleVoiceNote = (id: string) => {
     if (playingVoiceId === id) {
@@ -387,7 +426,7 @@ export default function SwipeDeck() {
 
                       {/* Interest Tags */}
                       <div className="flex flex-wrap gap-1 mb-4">
-                        {item.interests.map((interest, idx) => (
+                        {item.interests.map((interest: string, idx: number) => (
                           <span key={idx} className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/8 text-[10px] font-medium text-white/70">
                             #{interest}
                           </span>
@@ -541,7 +580,7 @@ export default function SwipeDeck() {
 
                     <div className="flex items-center justify-between pt-3 border-t border-white/10">
                       <div className="flex -space-x-2">
-                        {item.attendeesAvatars.map((av, idx) => (
+                        {item.attendeesAvatars.map((av: string, idx: number) => (
                           <img key={idx} src={av} alt="Attendee" className="w-6 h-6 rounded-full border border-black" />
                         ))}
                       </div>
@@ -614,7 +653,7 @@ export default function SwipeDeck() {
 
                     <div className="flex items-center gap-3 pt-2">
                       <div className="flex -space-x-2">
-                        {item.matchAvatars.map((av, idx) => (
+                        {item.matchAvatars.map((av: string, idx: number) => (
                           <img key={idx} src={av} alt="Match" className="w-8 h-8 rounded-full border-2 border-pink-500 object-cover" />
                         ))}
                       </div>

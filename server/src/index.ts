@@ -22,7 +22,9 @@ import reportsRoute from './routes/reports.js';
 import wingmanRoute from './routes/wingman.js';
 import subscriptionsRoute from './routes/subscriptions.js';
 import plannerRoute from './routes/planner.js';
+import notificationsRoute from './routes/notifications.js';
 import { authenticateJWT } from './middleware/auth.js';
+import { seedTestAccounts } from './seedTestAccounts.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -52,6 +54,7 @@ app.use('/api/auth', authRoute);
 app.use('/api/profiles', authenticateJWT, profilesRoute);
 app.use('/api/likes', authenticateJWT, likesRoute);
 app.use('/api/chats', authenticateJWT, chatsRoute);
+app.use('/api/notifications', authenticateJWT, notificationsRoute);
 app.use('/api/reports', authenticateJWT, reportsRoute);
 app.use('/api/wingman', authenticateJWT, wingmanRoute);
 app.use('/api/subscriptions', authenticateJWT, subscriptionsRoute);
@@ -71,4 +74,5 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 app.listen(PORT, () => {
   console.log(`⚡ AuraAI Express REST API running on port ${PORT}`);
   console.log(`🩺 Health check available at http://localhost:${PORT}/api/health`);
+  seedTestAccounts();
 });

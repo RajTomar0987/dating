@@ -142,7 +142,7 @@ router.get('/matches', async (req: AuthenticatedRequest, res: Response): Promise
  */
 router.get('/messages/:matchId', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const currentUserId = req.user?.firebase_uid || req.user?.id;
-  const { matchId } = req.params;
+  const matchId = req.params.matchId as string;
 
   if (!currentUserId) {
     res.status(401).json({ error: 'Unauthorized' });
@@ -258,7 +258,7 @@ router.get('/ai/companions', (_req: AuthenticatedRequest, res: Response): void =
  */
 router.get('/ai/messages/:companionId', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const currentUserId = req.user?.firebase_uid || req.user?.id;
-  const { companionId } = req.params;
+  const companionId = req.params.companionId as string;
 
   if (!currentUserId) {
     res.status(401).json({ error: 'Unauthorized' });

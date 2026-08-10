@@ -48,6 +48,69 @@ const ProfileUpdateSchema = z.object({
   photos: z.array(z.string()).optional(),
 });
 
+function calculateAge(birthday?: string | null): number | null {
+  if (!birthday) return null;
+  const birthDate = new Date(birthday);
+  if (isNaN(birthDate.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+/**
+ * GET /api/profiles/discover
+ * Discover real user profiles from Supabase (excluding current user)
+ */
+router.get('/discover', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const currentUserId = req.user?.firebase_uid || req.user?.id;
+  if (!currentUserId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  try {
+    const supabase = getSupabase();
+    const { data: dbProfiles } = await supabase
+      .from('profiles')
+      .select('*')
+      .neq('firebase_uid', currentUserId)
+      .limit(50);
+
+    let allProfiles = dbProfiles || [];
+
+    for (const [uid, p] of inMemoryProfiles.entries()) {
+      if (uid !== currentUserId && !allProfiles.some((existing: any) => existing.firebase_uid === uid)) {
+        allProfiles.push(p);
+      }
+    }
+
+    const formatted = allProfiles.map((p: any) => ({
+      id: p.firebase_uid || p.id,
+      name: p.display_name || p.first_name || 'User Profile',
+      age: calculateAge(p.birthday) || 24,
+      birthday: p.birthday,
+      gender: p.gender || 'Not specified',
+      occupation: p.occupation || 'Member',
+      location: p.location_city || 'Nearby',
+      education: p.education || 'Graduate',
+      bio: p.bio || 'Hello! Excited to meet new connections.',
+      images: p.photos?.length ? p.photos : ['https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'],
+      interests: p.interests?.length ? p.interests : ['Travel', 'Music', 'Technology'],
+      lifestyle: p.lifestyle?.length ? p.lifestyle : ['Active'],
+      compatibilityScore: 94
+    }));
+
+    res.status(200).json({ profiles: formatted });
+  } catch (err: any) {
+    console.error('[Profiles] Discover error:', err);
+    res.status(500).json({ error: 'Failed to fetch discovery profiles' });
+  }
+});
+
 /**
  * GET /api/profiles/me
  * Get the authenticated user's profile from Supabase (or fallback)
@@ -56,38 +119,58 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
   try {
     const firebaseUid = req.user?.firebase_uid || req.user?.id;
     if (!firebaseUid) {
-      res.status(401).json({ error: 'Unauthorized: Missing user UID' });
+      res.status(401).json({ error: 'UNAUTHORIZED' });
       return;
     }
+
+    console.log('[PROFILE/ME] Request received');
+    console.log('[PROFILE/ME] Authenticated user:', req.user);
+    console.log('[PROFILE/ME] Looking up firebase_uid:', firebaseUid);
 
     const supabase = getSupabase();
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('firebase_uid', firebaseUid)
-      .single();
+    let dbProfile: any = null;
+    let dbError: any = null;
 
-    if (profile) {
-      res.status(200).json(profile);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('firebase_uid', firebaseUid)
+        .maybeSingle();
+
+      dbProfile = data;
+      dbError = error;
+    } catch (e) {
+      dbError = e;
+    }
+
+    console.log('[PROFILE/ME] Supabase error:', dbError);
+
+    if (dbProfile) {
+      console.log('[PROFILE/ME] Profile found in Supabase:', true);
+      inMemoryProfiles.set(firebaseUid, dbProfile);
+      res.status(200).json({ profile: dbProfile });
       return;
     }
 
+    // Check in-memory store if Supabase row does not exist or table is unmigrated (PGRST205)
     const fallbackProfile = inMemoryProfiles.get(firebaseUid);
     if (fallbackProfile) {
-      res.status(200).json(fallbackProfile);
+      console.log('[PROFILE/ME] Profile found in memory store:', true);
+      res.status(200).json({ profile: fallbackProfile });
       return;
     }
 
-    console.warn('[Profiles] Get profile notice:', error);
-    res.status(404).json({ error: 'Profile not found' });
+    console.log('[PROFILE/ME] Profile found:', false);
+    res.status(404).json({ error: 'PROFILE_NOT_FOUND' });
   } catch (err: any) {
     const firebaseUid = req.user?.firebase_uid || req.user?.id;
     if (firebaseUid && inMemoryProfiles.has(firebaseUid)) {
-      res.status(200).json(inMemoryProfiles.get(firebaseUid));
+      res.status(200).json({ profile: inMemoryProfiles.get(firebaseUid) });
       return;
     }
-    console.error('[Profiles] Get profile error:', err);
-    res.status(500).json({ error: err.message || err });
+    console.error('[PROFILE/ME] Get profile exception:', err);
+    res.status(500).json({ error: 'SERVER_ERROR', message: err.message || err });
   }
 });
 
@@ -192,6 +275,10 @@ router.post('/complete', async (req: AuthenticatedRequest, res: Response): Promi
  */
 router.put('/me', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const firebaseUid = req.user?.firebase_uid || req.user?.id;
+  if (!firebaseUid) {
+    res.status(401).json({ error: 'Unauthorized: Missing user UID' });
+    return;
+  }
   const result = ProfileUpdateSchema.safeParse(req.body);
   if (!result.success) {
     res.status(400).json({ error: 'Invalid profile data', details: result.error.errors });
@@ -205,7 +292,8 @@ router.put('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
       updated_at: new Date().toISOString(),
     };
 
-    const { data: profile, error } = await supabase
+    let profile = null;
+    const { data: dbProfile, error } = await supabase
       .from('profiles')
       .upsert(
         {
@@ -215,12 +303,20 @@ router.put('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
         { onConflict: 'firebase_uid' }
       )
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error) {
-      console.error("Supabase Error (Update):", error);
-      res.status(500).json({ error: error.message || JSON.stringify(error) });
-      return;
+    if (!error && dbProfile) {
+      profile = dbProfile;
+      inMemoryProfiles.set(firebaseUid, profile);
+    } else {
+      const existing = inMemoryProfiles.get(firebaseUid) || {};
+      profile = {
+        ...existing,
+        id: firebaseUid,
+        firebase_uid: firebaseUid,
+        ...updateData,
+      };
+      inMemoryProfiles.set(firebaseUid, profile);
     }
 
     res.status(200).json({
@@ -229,7 +325,20 @@ router.put('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
     });
   } catch (err: any) {
     console.error('[Profiles] Update profile error:', err);
-    res.status(500).json({ error: err.message || 'Internal server error' });
+    const existing = inMemoryProfiles.get(firebaseUid) || {};
+    const profile = {
+      ...existing,
+      id: firebaseUid,
+      firebase_uid: firebaseUid,
+      ...result.data,
+      updated_at: new Date().toISOString(),
+    };
+    inMemoryProfiles.set(firebaseUid, profile);
+
+    res.status(200).json({
+      success: true,
+      profile,
+    });
   }
 });
 

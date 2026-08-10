@@ -52,7 +52,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 
 export default function ProfileWizard() {
   const navigate = useNavigate();
-  const { firebaseUser, jwt, refreshProfile } = useAuth();
+  const { firebaseUser, jwt, setProfile } = useAuth();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -244,11 +244,8 @@ export default function ProfileWizard() {
         Authorization: `Bearer ${authToken}`,
       };
 
-      console.log("=== PROFILE SAVE START ===");
-      console.log("API URL:", `${API_BASE_URL}/profiles/complete`);
-      console.log("JWT exists:", !!authToken);
-      console.log("JWT length:", authToken?.length);
-      console.log("Profile data:", profileData);
+      console.log('[PROFILE] Saving profile');
+      console.log('[PROFILE] Endpoint:', `${API_BASE_URL}/profiles/complete`);
 
       const res = await fetch(`${API_BASE_URL}/profiles/complete`, {
         method: 'POST',
@@ -257,21 +254,20 @@ export default function ProfileWizard() {
       });
 
       const responseBody = await res.json().catch(() => ({}));
-      console.log("Profile save HTTP status:", res.status);
-      console.log("Profile save response:", responseBody);
+      console.log('[PROFILE] Response status:', res.status);
+      console.log('[PROFILE] Response body:', responseBody);
 
       if (!res.ok) {
-        console.error("PROFILE SAVE FAILED", {
-          status: res.status,
-          response: responseBody
-        });
+        console.error('[PROFILE] Save failed:', { status: res.status, body: responseBody });
         const errDetails = responseBody.details
-          ? `${responseBody.error}: ${responseBody.details}`
+          ? `${responseBody.error}: ${JSON.stringify(responseBody.details)}`
           : (responseBody.error || `HTTP ${res.status}`);
         throw new Error(errDetails);
       }
 
-      await refreshProfile();
+      if (responseBody.profile) {
+        setProfile(responseBody.profile);
+      }
       navigate('/dashboard', { replace: true });
     } catch (err: any) {
       console.error('Profile save error:', err);

@@ -87,7 +87,7 @@ router.post('/session', async (req: Request, res: Response): Promise<void> => {
       { expiresIn: '7d' }
     );
 
-    console.log("Generated JWT:", token);
+    console.log("[AUTH] JWT session issued successfully for UID:", uid);
 
     res.status(200).json({
       message: 'Session created successfully',
@@ -113,19 +113,30 @@ router.post('/session', async (req: Request, res: Response): Promise<void> => {
 router.get('/me', authenticateJWT, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const supabase = getSupabase();
-    const { data: profile, error } = await supabase
+    const { data: profile } = await supabase
       .from('profiles')
       .select('*')
       .eq('firebase_uid', req.user!.firebase_uid)
-      .single();
+      .maybeSingle();
 
-    if (error || !profile) {
-      res.status(404).json({ error: 'Profile not found' });
+    if (profile) {
+      res.status(200).json({ profile });
       return;
     }
 
-    res.status(200).json({ profile });
+    const fallbackProfile = inMemoryProfiles.get(req.user!.firebase_uid);
+    if (fallbackProfile) {
+      res.status(200).json({ profile: fallbackProfile });
+      return;
+    }
+
+    res.status(404).json({ error: 'Profile not found' });
   } catch (err) {
+    const fallbackProfile = inMemoryProfiles.get(req.user!.firebase_uid);
+    if (fallbackProfile) {
+      res.status(200).json({ profile: fallbackProfile });
+      return;
+    }
     console.error('[Auth] Get profile error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }

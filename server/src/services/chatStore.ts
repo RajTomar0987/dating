@@ -74,7 +74,7 @@ export async function getUserMatches(userId: string) {
 
     if (!error && matches && matches.length > 0) {
       // Sync memory
-      matches.forEach(m => inMemoryMatches.set(m.id, m));
+      matches.forEach((m: any) => inMemoryMatches.set(m.id, m));
       return matches;
     }
   } catch (err) {

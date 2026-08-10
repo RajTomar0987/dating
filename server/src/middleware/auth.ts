@@ -21,10 +21,10 @@ function getJwtSecret(): string {
  */
 export async function verifyFirebaseToken(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
-  console.log("Authorization Header:", authHeader);
+  console.log('[AUTH] Authorization header present:', !!authHeader);
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.error("[Auth Error] Missing or invalid authorization header:", authHeader);
+    console.error('[AUTH Error] Missing or invalid authorization header format');
     res.status(401).json({ error: 'Missing or invalid authorization header' });
     return;
   }
@@ -38,11 +38,10 @@ export async function verifyFirebaseToken(req: AuthenticatedRequest, res: Respon
       firebase_uid: decodedToken.uid,
       email: decodedToken.email,
     };
-    console.log("Decoded JWT (Firebase):", decodedToken);
-    console.log("Authenticated User:", req.user);
+    console.log('[AUTH] Verified Firebase user:', req.user.firebase_uid);
     next();
   } catch (err: any) {
-    console.warn('[Auth Notice] firebaseAuth.verifyIdToken notice:', err?.message || err);
+    console.warn('[AUTH Notice] firebaseAuth.verifyIdToken notice:', err?.message || err);
     
     // Fallback: decode raw JWT payload if Firebase Admin credentials are not provided
     const rawDecoded = jwt.decode(token) as any;
@@ -53,11 +52,10 @@ export async function verifyFirebaseToken(req: AuthenticatedRequest, res: Respon
         firebase_uid: uid,
         email: rawDecoded.email || undefined,
       };
-      console.log("Decoded JWT (Decoded Fallback):", rawDecoded);
-      console.log("Authenticated User:", req.user);
+      console.log('[AUTH] Fallback decoded user:', req.user.firebase_uid);
       next();
     } else {
-      console.error("[Auth Error] Firebase token verification failed completely:", err);
+      console.error('[AUTH Error] Firebase token verification failed completely:', err?.message || err);
       res.status(401).json({ error: 'Invalid or expired Firebase token', details: err?.message });
     }
   }
@@ -69,10 +67,9 @@ export async function verifyFirebaseToken(req: AuthenticatedRequest, res: Respon
  */
 export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
-  console.log("Authorization Header:", authHeader);
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.error("[Auth Error] Missing or invalid Bearer header:", authHeader);
+    console.error('[AUTH Error] Missing or invalid Bearer header');
     res.status(401).json({ error: 'Authentication required. Please sign in.' });
     return;
   }
@@ -93,8 +90,7 @@ export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: 
       email: decoded.email,
     };
 
-    console.log("Decoded JWT:", decoded);
-    console.log("Authenticated User:", req.user);
+    console.log('[AUTH] Authenticated User:', req.user.firebase_uid);
     return next();
   } catch (jwtErr: any) {
     // 2. If JWT verify failed, attempt decoding as Firebase ID token OR backend JWT
@@ -109,13 +105,12 @@ export function authenticateJWT(req: AuthenticatedRequest, res: Response, next: 
           email: decodedToken.email || undefined,
         };
 
-        console.log("Decoded JWT (Fallback):", decodedToken);
-        console.log("Authenticated User:", req.user);
+        console.log('[AUTH] Fallback Authenticated User:', req.user.firebase_uid);
         return next();
       }
     }
 
-    console.error("[Auth Error] JWT verification failed:", jwtErr.message);
+    console.error('[AUTH Error] JWT verification failed:', jwtErr.message);
     if (jwtErr.name === 'TokenExpiredError') {
       res.status(401).json({ error: 'Token expired. Please re-authenticate.' });
       return;

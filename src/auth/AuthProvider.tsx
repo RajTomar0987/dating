@@ -25,11 +25,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
 
-  // Create session with backend — exchange Firebase token for JWT + profile
+  // 1. Create backend session using Firebase ID token
   const createSession = useCallback(async (user: User): Promise<{ jwt: string; profile: UserProfile | null }> => {
     const idToken = await user.getIdToken(true);
-    console.log("Firebase User:", user);
-    console.log("Firebase ID Token:", idToken);
+    console.log('[AUTH] Firebase user:', user?.uid);
 
     const res = await fetch(`${API_BASE_URL}/auth/session`, {
       method: 'POST',
@@ -39,45 +38,120 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ idToken }),
     });
 
-    console.log("Session Status:", res.status);
+    console.log('[AUTH] Session response:', res.status);
 
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({ error: 'Session creation failed' }));
-      console.error("[AuthProvider] Session creation response error:", errBody);
+      console.error('[AUTH] Session creation error:', errBody);
       throw new Error(errBody.error || 'Session creation failed');
     }
 
     const data = await res.json();
-    console.log("Backend JWT:", data.token);
     return { jwt: data.token, profile: data.profile };
   }, []);
 
-  // Establish session after Firebase auth
+  // 2. Fetch canonical user profile from GET /api/profiles/me with backend JWT
+  const fetchProfileMe = useCallback(async (authToken: string): Promise<{ profile: UserProfile | null; status: number }> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/profiles/me`, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      console.log('[AUTH] Profile response:', res.status);
+
+      if (res.status === 200) {
+        const data = await res.json();
+        const userProfile = data.profile || data;
+        console.log('[AUTH] Profile loaded:', userProfile?.id || userProfile?.firebase_uid);
+        return { profile: userProfile, status: 200 };
+      }
+
+      if (res.status === 404) {
+        console.log('[AUTH] Profile response: 404 (PROFILE_NOT_FOUND)');
+        return { profile: null, status: 404 };
+      }
+
+      return { profile: null, status: res.status };
+    } catch (err) {
+      console.error('[AUTH] Fetch profile exception:', err);
+      return { profile: null, status: 500 };
+    }
+  }, []);
+
+  // 3. Establish full session & restore profile state
   const establishSession = useCallback(async (user: User) => {
     try {
       setProfileLoading(true);
       setError(null);
 
-      const { jwt: token, profile: userProfile } = await createSession(user);
-
+      // Create/Verify JWT session
+      const { jwt: token, profile: sessionProfile } = await createSession(user);
       setJwt(token);
       localStorage.setItem('aura_jwt_token', token);
 
-      if (userProfile && userProfile.profile_completed) {
-        setProfile(userProfile);
+      // Query database profile using verified JWT
+      const { profile: loadedProfile, status: profileHttpStatus } = await fetchProfileMe(token);
+
+      if (profileHttpStatus === 200 && loadedProfile) {
+        setProfile(loadedProfile);
         setStatus('authenticated');
-      } else {
-        setProfile(userProfile);
+      } else if (profileHttpStatus === 404) {
+        // Genuine missing profile -> onboarding required
+        setProfile(null);
         setStatus('needs-profile');
+      } else if (profileHttpStatus === 401) {
+        // Attempt ONE retry with fresh Firebase token
+        console.warn('[AUTH] 401 on profile fetch. Retrying token refresh...');
+        const freshIdToken = await user.getIdToken(true);
+        const retrySession = await fetch(`${API_BASE_URL}/auth/session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken: freshIdToken }),
+        });
+
+        if (retrySession.ok) {
+          const retryData = await retrySession.json();
+          const retryToken = retryData.token;
+          setJwt(retryToken);
+          localStorage.setItem('aura_jwt_token', retryToken);
+
+          const { profile: retryLoaded, status: retryStatus } = await fetchProfileMe(retryToken);
+          if (retryStatus === 200 && retryLoaded) {
+            setProfile(retryLoaded);
+            setStatus('authenticated');
+            return;
+          } else if (retryStatus === 404) {
+            setProfile(null);
+            setStatus('needs-profile');
+            return;
+          }
+        }
+
+        // If retry still fails 401 -> sign out
+        setJwt(null);
+        setProfile(null);
+        localStorage.removeItem('aura_jwt_token');
+        setStatus('unauthenticated');
+      } else {
+        // 500 or Network failure -> DO NOT convert 500 to needs-profile!
+        console.error('[AUTH] Backend server error loading profile. HTTP Status:', profileHttpStatus);
+        if (sessionProfile && sessionProfile.profile_completed) {
+          setProfile(sessionProfile);
+          setStatus('authenticated');
+        } else {
+          setError(`Server error (${profileHttpStatus}) loading profile. Please refresh.`);
+        }
       }
     } catch (err: any) {
-      console.error('[AuthProvider] Session creation failed:', err);
-      setError(err.message || 'Failed to create session');
-      setStatus('needs-profile');
+      console.error('[AUTH] Session establishment failed:', err);
+      setError(err.message || 'Failed to establish authentication session');
     } finally {
       setProfileLoading(false);
     }
-  }, [createSession]);
+  }, [createSession, fetchProfileMe]);
 
   // Listen to Firebase auth state changes
   useEffect(() => {
@@ -104,13 +178,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'aura_jwt_token') {
         if (!e.newValue) {
-          // Another tab logged out
           setJwt(null);
           setProfile(null);
           setStatus('unauthenticated');
           firebaseSignOut(auth).catch(() => { });
         } else if (e.newValue !== jwt) {
-          // Another tab refreshed token
           setJwt(e.newValue);
         }
       }
@@ -186,7 +258,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('aura_jwt_token');
       setStatus('unauthenticated');
 
-      // Reset Zustand store
       const resetStore = useAppStore.getState().resetStore;
       if (resetStore) resetStore();
     } catch (err: any) {
@@ -231,7 +302,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Firebase error code to user-friendly message
 function getFirebaseErrorMessage(code: string): string {
   switch (code) {
     case 'auth/user-not-found':

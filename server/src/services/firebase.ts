@@ -1,10 +1,9 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import firebaseAdmin from 'firebase-admin';
 
 const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
-let app;
+let app: any;
 if (getApps().length === 0) {
   if (serviceAccountKey) {
     try {
@@ -31,3 +30,4 @@ if (getApps().length === 0) {
 
 export const firebaseAdmin = app;
 export const firebaseAuth = getAuth(app);
+
