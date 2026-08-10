@@ -164,13 +164,139 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
     console.log('[PROFILE/ME] Profile found:', false);
     res.status(404).json({ error: 'PROFILE_NOT_FOUND' });
   } catch (err: any) {
-    const firebaseUid = req.user?.firebase_uid || req.user?.id;
-    if (firebaseUid && inMemoryProfiles.has(firebaseUid)) {
-      res.status(200).json({ profile: inMemoryProfiles.get(firebaseUid) });
+    console.error('[PROFILE/ME] Unexpected error:', err);
+    res.status(500).json({ error: 'INTERNAL_SERVER_ERROR' });
+  }
+});
+
+/**
+ * GET /api/profiles/search?q=<query>
+ * Real user search across display_name, first_name, location_city, occupation, education, bio, interests.
+ * Excludes current authenticated user. Returns max 10 matches.
+ */
+router.get('/search', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const currentUid = req.user?.firebase_uid || req.user?.id;
+    if (!currentUid) {
+      res.status(401).json({ error: 'UNAUTHORIZED' });
       return;
     }
-    console.error('[PROFILE/ME] Get profile exception:', err);
-    res.status(500).json({ error: 'SERVER_ERROR', message: err.message || err });
+
+    const rawQ = req.query.q;
+    const queryStr = (Array.isArray(rawQ) ? String(rawQ[0]) : String(rawQ || '')).trim().toLowerCase();
+    if (!queryStr || queryStr.length < 2) {
+      res.status(200).json({ profiles: [] });
+      return;
+    }
+
+    const supabase = getSupabase();
+    let dbMatches: any[] = [];
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .neq('firebase_uid', currentUid)
+        .or(`display_name.ilike.%${queryStr}%,first_name.ilike.%${queryStr}%,location_city.ilike.%${queryStr}%,occupation.ilike.%${queryStr}%,education.ilike.%${queryStr}%,bio.ilike.%${queryStr}%`)
+        .limit(10);
+
+      if (!error && Array.isArray(data)) {
+        dbMatches = data;
+      }
+    } catch (err) {
+      console.warn('[Profiles/Search] Supabase query notice:', err);
+    }
+
+    // Also search memory store
+    const memoryMatches: any[] = [];
+    for (const [uid, prof] of inMemoryProfiles.entries()) {
+      if (uid === currentUid || prof.firebase_uid === currentUid) continue;
+
+      const searchableText = [
+        prof.display_name,
+        prof.first_name,
+        prof.location_city,
+        prof.occupation,
+        prof.education,
+        prof.bio,
+        ...(Array.isArray(prof.interests) ? prof.interests : [])
+      ].filter(Boolean).join(' ').toLowerCase();
+
+      if (searchableText.includes(queryStr)) {
+        memoryMatches.push(prof);
+      }
+    }
+
+    // Combine & deduplicate by firebase_uid / id
+    const profileMap = new Map<string, any>();
+    for (const p of [...dbMatches, ...memoryMatches]) {
+      const key = p.firebase_uid || p.id;
+      if (key && key !== currentUid && !profileMap.has(key)) {
+        profileMap.set(key, {
+          id: p.id || p.firebase_uid,
+          firebase_uid: p.firebase_uid || p.id,
+          display_name: p.display_name || p.first_name || 'User',
+          first_name: p.first_name || p.display_name || 'User',
+          birthday: p.birthday || null,
+          gender: p.gender || null,
+          location_city: p.location_city || 'India',
+          occupation: p.occupation || 'Member',
+          education: p.education || '',
+          interests: p.interests || [],
+          bio: p.bio || '',
+          photos: p.photos || [],
+          profile_completed: true
+        });
+      }
+    }
+
+    const results = Array.from(profileMap.values()).slice(0, 10);
+    console.log(`[Profiles/Search] Found ${results.length} matching profiles for query: "${queryStr}"`);
+    res.status(200).json({ profiles: results });
+  } catch (err: any) {
+    console.error('[Profiles/Search] Error:', err);
+    res.status(500).json({ error: 'SEARCH_ERROR' });
+  }
+});
+
+/**
+ * GET /api/profiles/:id
+ * Get a specific user profile by firebase_uid or profile ID
+ */
+router.get('/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const targetId = (Array.isArray(rawId) ? String(rawId[0]) : String(rawId || '')).trim();
+    if (!targetId) {
+      res.status(400).json({ error: 'Missing target profile ID' });
+      return;
+    }
+
+    const supabase = getSupabase();
+    let dbProfile: any = null;
+
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`firebase_uid.eq.${targetId},id.eq.${targetId}`)
+        .maybeSingle();
+
+      dbProfile = data;
+    } catch (e) {
+      console.warn('[Profiles/:id] Supabase query notice:', e);
+    }
+
+    const profile = dbProfile || inMemoryProfiles.get(targetId);
+    if (!profile) {
+      res.status(404).json({ error: 'PROFILE_NOT_FOUND' });
+      return;
+    }
+
+    res.status(200).json({ profile });
+  } catch (err: any) {
+    console.error('[Profiles/:id] Error:', err);
+    res.status(500).json({ error: 'SERVER_ERROR' });
   }
 });
 

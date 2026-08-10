@@ -186,6 +186,46 @@ async function runFullVerification() {
     );
 
     // ----------------------------------------------------------------
+    // 4.5 REAL USER SEARCH (Name, Location, Interest, Occupation, No-Result & Isolation)
+    // ----------------------------------------------------------------
+    // 1. Name Search: User A searches "Test User B" -> B appears, A excluded
+    const nameSearchRes = await fetch(`${API_BASE}/profiles/search?q=Test%20User%20B`, { headers: { Authorization: `Bearer ${tokenA}` } });
+    const nameSearchBody = await nameSearchRes.json();
+    const nameSearchOk = nameSearchRes.status === 200 && nameSearchBody.profiles?.some((p: any) => p.firebase_uid === USER_B.uid) && !nameSearchBody.profiles?.some((p: any) => p.firebase_uid === USER_A.uid);
+
+    // 2. Location Search: User A searches "Gwalior"
+    const locSearchRes = await fetch(`${API_BASE}/profiles/search?q=Gwalior`, { headers: { Authorization: `Bearer ${tokenA}` } });
+    const locSearchBody = await locSearchRes.json();
+    const locSearchOk = locSearchRes.status === 200 && locSearchBody.profiles?.some((p: any) => p.firebase_uid === USER_B.uid);
+
+    // 3. Interest Search: User A searches "Art"
+    const intSearchRes = await fetch(`${API_BASE}/profiles/search?q=Art`, { headers: { Authorization: `Bearer ${tokenA}` } });
+    const intSearchBody = await intSearchRes.json();
+    const intSearchOk = intSearchRes.status === 200 && intSearchBody.profiles?.some((p: any) => p.firebase_uid === USER_B.uid);
+
+    // 4. Occupation Search: User B searches "Engineer" -> A appears
+    const occSearchRes = await fetch(`${API_BASE}/profiles/search?q=Engineer`, { headers: { Authorization: `Bearer ${tokenB}` } });
+    const occSearchBody = await occSearchRes.json();
+    const occSearchOk = occSearchRes.status === 200 && occSearchBody.profiles?.some((p: any) => p.firebase_uid === USER_A.uid);
+
+    // 5. No Result Search
+    const noResSearch = await fetch(`${API_BASE}/profiles/search?q=NonExistentQuery99`, { headers: { Authorization: `Bearer ${tokenA}` } });
+    const noResBody = await noResSearch.json();
+    const noResOk = noResSearch.status === 200 && noResBody.profiles?.length === 0;
+
+    // 6. Open Searched Profile by ID
+    const getByIdRes = await fetch(`${API_BASE}/profiles/${USER_B.uid}`, { headers: { Authorization: `Bearer ${tokenA}` } });
+    const getByIdBody = await getByIdRes.json();
+    const getByIdOk = getByIdRes.status === 200 && getByIdBody.profile?.firebase_uid === USER_B.uid;
+
+    addResult(
+      'Real User Search Engine',
+      nameSearchOk && locSearchOk && intSearchOk && getByIdOk,
+      occSearchOk && noResOk,
+      `Name search: ${nameSearchBody.profiles?.length || 0} match(es), Location: ${locSearchBody.profiles?.length || 0}, Occupation: ${occSearchBody.profiles?.length || 0}, No-result: ${noResBody.profiles?.length || 0}, Profile by ID: "${getByIdBody.profile?.display_name}"`
+    );
+
+    // ----------------------------------------------------------------
     // 5 & 6. LIKES & RECIPROCAL MATCH ENGINE
     // ----------------------------------------------------------------
     // Reset previous test swipes

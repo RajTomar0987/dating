@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Heart, MessageCircle, Sparkles, MapPin, Calendar, Coffee, Film, 
@@ -11,6 +12,7 @@ import Sidebar from '../components/Sidebar';
 import ParticleBg from '../components/ParticleBg';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../auth/useAuth';
+import { ApiClient } from '../api/client';
 import {
   LIVE_ACTIVITY_TICKER,
   LARGE_TINDER_MATCHES,
@@ -95,10 +97,70 @@ export default function LiveHomeDashboard() {
   // Floating Notification Popup Toggle
   const [showFloatingMatch, setShowFloatingMatch] = useState(true);
 
-  // Carousel Ref
+  const { profile, firebaseUser } = useAuth();
+  const navigate = useNavigate();
+
+  // Real User Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const eventCarouselRef = useRef<HTMLDivElement>(null);
 
-  const { profile, firebaseUser } = useAuth();
+  // Debounced server-side search
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      setIsSearchOpen(false);
+      return;
+    }
+
+    setIsSearching(true);
+    setIsSearchOpen(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await ApiClient.searchProfiles(q);
+        setSearchResults(res?.profiles || []);
+      } catch (err) {
+        console.error('[Dashboard/Search] Error searching profiles:', err);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setIsSearchOpen(false);
+    } else if (e.key === 'Enter' && searchResults.length > 0) {
+      e.preventDefault();
+      handleSelectUser(searchResults[0]);
+    }
+  };
+
+  const handleSelectUser = (user: any) => {
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    navigate(`/profile/${user.firebase_uid || user.id}`);
+  };
 
   // Time-based Greeting
   const getGreeting = () => {
@@ -207,6 +269,117 @@ export default function LiveHomeDashboard() {
             <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest font-bold hidden sm:inline">
               ● REALTIME TELEMETRY STREAM
             </span>
+          </div>
+        </section>
+
+        {/* ====================================================
+            SECTION 1.5: REAL DATABASE USER SEARCH BAR
+            ==================================================== */}
+        <section ref={searchContainerRef} className="relative z-30">
+          <div className="relative w-full max-w-3xl mx-auto">
+            <div className="relative flex items-center">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-pink-400/80 shrink-0" size={18} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => { if (searchQuery.trim().length >= 2) setIsSearchOpen(true); }}
+                onKeyDown={handleKeyDown}
+                placeholder="Search people, interests, locations, occupations..."
+                className="w-full py-3.5 pl-11 pr-10 rounded-2xl bg-[#0A0A14]/90 border border-white/15 text-xs md:text-sm text-white placeholder-white/40 focus:outline-none focus:border-pink-500/80 focus:ring-2 focus:ring-pink-500/20 backdrop-blur-2xl shadow-xl transition-all"
+              />
+              {searchQuery ? (
+                <button
+                  onClick={() => { setSearchQuery(''); setIsSearchOpen(false); }}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors cursor-pointer p-1"
+                >
+                  <X size={15} />
+                </button>
+              ) : (
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-white/30 hidden sm:inline">
+                  ESC to close
+                </span>
+              )}
+            </div>
+
+            {/* SEARCH RESULTS DROPDOWN */}
+            <AnimatePresence>
+              {isSearchOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-full left-0 right-0 mt-2 w-full rounded-2xl bg-[#0A0A14]/98 border border-white/15 shadow-[0_25px_60px_rgba(0,0,0,0.9)] backdrop-blur-2xl text-white overflow-hidden max-h-96 overflow-y-auto divide-y divide-white/8 z-50"
+                >
+                  <div className="p-3 bg-white/[0.03] flex items-center justify-between text-[11px] font-mono text-white/50">
+                    <span>REAL USER SEARCH RESULTS</span>
+                    {isSearching && <span className="text-pink-400 animate-pulse">Searching DB...</span>}
+                  </div>
+
+                  {isSearching && searchResults.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-white/60 space-y-2">
+                      <div className="w-5 h-5 border-2 border-pink-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                      <p>Searching database profiles...</p>
+                    </div>
+                  ) : searchResults.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-white/50 space-y-1">
+                      <p className="font-semibold text-white/80">No registered users found</p>
+                      <p className="text-[11px]">No profiles match "{searchQuery}"</p>
+                    </div>
+                  ) : (
+                    searchResults.map((user) => {
+                      const userPhoto = user.photos?.[0] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80';
+                      const userLocation = user.location_city || 'India';
+                      const userOccupation = user.occupation || 'Member';
+                      const userInterests = Array.isArray(user.interests) ? user.interests.slice(0, 3) : [];
+
+                      return (
+                        <div
+                          key={user.firebase_uid || user.id}
+                          onClick={() => handleSelectUser(user)}
+                          className="p-3 hover:bg-white/[0.06] transition-colors cursor-pointer flex items-center gap-3 group"
+                        >
+                          <div className="relative shrink-0">
+                            <img
+                              src={userPhoto}
+                              alt={user.display_name}
+                              className="w-11 h-11 rounded-xl object-cover border border-white/15 group-hover:scale-105 transition-transform"
+                            />
+                            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#0A0A14]" />
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <h4 className="text-xs md:text-sm font-bold text-white truncate group-hover:text-pink-400 transition-colors">
+                                {user.display_name}
+                              </h4>
+                              <span className="px-2 py-0.5 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300 text-[10px] font-mono font-bold shrink-0">
+                                97% Match
+                              </span>
+                            </div>
+
+                            <p className="text-[11px] text-white/60 truncate mt-0.5">
+                              {userLocation} • {userOccupation}
+                            </p>
+
+                            {userInterests.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {userInterests.map((interest: string, idx: number) => (
+                                  <span key={idx} className="text-[9.5px] font-mono px-2 py-0.5 rounded-md bg-white/5 text-white/70 border border-white/8">
+                                    {interest}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </section>
 

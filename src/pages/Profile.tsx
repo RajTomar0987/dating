@@ -12,6 +12,9 @@ import ParticleBg from '../components/ParticleBg';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../auth/useAuth';
 
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { ApiClient } from '../api/client';
+
 // Helper to calculate age from birthday string (e.g., '2005-12-01')
 const calculateAge = (birthday?: string | null): number | null => {
   if (!birthday) return null;
@@ -29,6 +32,13 @@ const calculateAge = (birthday?: string | null): number | null => {
 export default function Profile() {
   const { setActiveTab, setSelectedMatchId, addToast } = useAppStore();
   const { profile, firebaseUser, jwt, loading, profileLoading } = useAuth();
+  const { id } = useParams<{ id?: string }>();
+  const [searchParams] = useSearchParams();
+  const targetId = id || searchParams.get('id');
+  const navigate = useNavigate();
+
+  const [targetProfile, setTargetProfile] = useState<any | null>(null);
+  const [targetLoading, setTargetLoading] = useState(false);
 
   // Active UI States
   const [activeStory, setActiveStory] = useState<any | null>(null);
@@ -36,15 +46,54 @@ export default function Profile() {
   const [isLiked, setIsLiked] = useState(false);
   const [playingVoice, setPlayingVoice] = useState(false);
 
-  // Debugging console logs as requested
   useEffect(() => {
-    console.log('[PROFILE] Firebase user:', firebaseUser);
-    console.log('[PROFILE] JWT exists:', !!jwt);
-    console.log('[PROFILE] Loaded profile:', profile);
-  }, [firebaseUser, jwt, profile]);
+    if (targetId && targetId !== firebaseUser?.uid) {
+      setTargetLoading(true);
+      ApiClient.getProfileById(targetId)
+        .then(res => {
+          if (res?.profile) {
+            setTargetProfile(res.profile);
+          }
+        })
+        .finally(() => setTargetLoading(false));
+    } else {
+      setTargetProfile(null);
+    }
+  }, [targetId, firebaseUser]);
+
+  const isViewingSelf = !targetId || targetId === firebaseUser?.uid;
+  const displayProfile = targetProfile || profile;
+
+  const handleLikeTarget = async () => {
+    if (!targetId || isViewingSelf) return;
+    setIsLiked(true);
+    addToast(`Liked ${displayProfile?.display_name || 'user'}!`, 'match');
+    const res = await ApiClient.likeUser(targetId, 'like');
+    if (res?.isMatch) {
+      addToast(`🎉 Mutual Match with ${displayProfile?.display_name}!`, 'match');
+      if (res.match?.id) {
+        setSelectedMatchId(res.match.id);
+        navigate('/chat');
+      }
+    }
+  };
+
+  const handleSuperLikeTarget = async () => {
+    if (!targetId || isViewingSelf) return;
+    setIsLiked(true);
+    addToast(`Super Liked ${displayProfile?.display_name || 'user'}! ⚡`, 'match');
+    const res = await ApiClient.likeUser(targetId, 'superlike');
+    if (res?.isMatch) {
+      addToast(`🎉 Mutual Match with ${displayProfile?.display_name}!`, 'match');
+      if (res.match?.id) {
+        setSelectedMatchId(res.match.id);
+        navigate('/chat');
+      }
+    }
+  };
 
   // Loading state handling
-  if (loading || profileLoading) {
+  if (loading || profileLoading || targetLoading) {
     return (
       <div className="flex min-h-screen bg-[#04040A] text-white font-sans items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -56,12 +105,12 @@ export default function Profile() {
   }
 
   // Real user data formatting
-  const displayName = profile?.display_name || profile?.first_name || firebaseUser?.displayName || 'User Profile';
-  const age = calculateAge(profile?.birthday);
+  const displayName = displayProfile?.display_name || displayProfile?.first_name || (isViewingSelf ? firebaseUser?.displayName : 'User Profile') || 'User Profile';
+  const age = calculateAge(displayProfile?.birthday);
   const nameHeading = age ? `${displayName}, ${age}` : displayName;
 
-  const profilePhoto = profile?.photos?.[0] || firebaseUser?.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
-  const coverMedia = profile?.photos?.[1] || profile?.photos?.[0] || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=1200&q=80';
+  const profilePhoto = displayProfile?.photos?.[0] || (isViewingSelf ? firebaseUser?.photoURL : null) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+  const coverMedia = displayProfile?.photos?.[1] || displayProfile?.photos?.[0] || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=1200&q=80';
   
   const occupation = profile?.occupation || 'Not specified';
   const education = profile?.education || 'Not specified';
@@ -186,11 +235,41 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Match Preferences Card */}
-            <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/12 backdrop-blur-xl text-center md:text-right max-w-xs space-y-1">
-              <span className="text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider block">Interested In</span>
-              <p className="text-xs font-semibold text-white">{interestedIn}</p>
-            </div>
+            {/* Action Card / Match Preferences */}
+            {!isViewingSelf ? (
+              <div className="p-4 rounded-2xl bg-white/[0.04] border border-pink-500/30 backdrop-blur-xl flex flex-wrap items-center justify-center md:justify-end gap-2.5">
+                <button
+                  onClick={handleLikeTarget}
+                  className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-lg ${
+                    isLiked
+                      ? 'bg-pink-600 text-white'
+                      : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:scale-105 shadow-[0_0_15px_rgba(236,72,153,0.4)]'
+                  }`}
+                >
+                  <Heart size={14} className="fill-white" />
+                  {isLiked ? 'Liked' : 'Like'}
+                </button>
+                <button
+                  onClick={handleSuperLikeTarget}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 hover:scale-105 transition-all cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+                >
+                  <Sparkles size={14} />
+                  Super Like
+                </button>
+                <button
+                  onClick={() => navigate('/chat')}
+                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <MessageCircle size={14} />
+                  Message
+                </button>
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/12 backdrop-blur-xl text-center md:text-right max-w-xs space-y-1">
+                <span className="text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider block">Interested In</span>
+                <p className="text-xs font-semibold text-white">{interestedIn}</p>
+              </div>
+            )}
           </div>
         </section>
 

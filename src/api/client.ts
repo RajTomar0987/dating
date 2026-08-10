@@ -45,6 +45,14 @@ export const ApiClient = {
     return await apiFetch('/profiles/me');
   },
 
+  async getProfileById(id: string) {
+    return await apiFetch(`/profiles/${encodeURIComponent(id)}`);
+  },
+
+  async searchProfiles(query: string) {
+    return await apiFetch(`/profiles/search?q=${encodeURIComponent(query)}`);
+  },
+
   async updateProfile(profileData: Partial<Profile>) {
     return await apiFetch('/profiles/me', {
       method: 'PUT',
@@ -77,6 +85,10 @@ export const ApiClient = {
       method: 'POST',
       body: JSON.stringify({ targetId, direction })
     });
+  },
+
+  async likeUser(targetId: string, direction: 'like' | 'pass' | 'superlike' = 'like') {
+    return await this.recordSwipe(targetId, direction);
   },
 
   async getDiscoverProfiles() {

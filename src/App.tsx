@@ -160,6 +160,7 @@ export default function App() {
         <Route path="/discover" element={<ProtectedPage><SwipeDeck /></ProtectedPage>} />
         <Route path="/chat" element={<ProtectedPage><Chat /></ProtectedPage>} />
         <Route path="/profile" element={<ProtectedPage><Profile /></ProtectedPage>} />
+        <Route path="/profile/:id" element={<ProtectedPage><Profile /></ProtectedPage>} />
         <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
         <Route path="/matchmaker" element={<ProtectedPage><Matchmaker /></ProtectedPage>} />
         <Route path="/planner" element={<ProtectedPage><DatePlanner /></ProtectedPage>} />
