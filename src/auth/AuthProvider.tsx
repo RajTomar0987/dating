@@ -14,7 +14,15 @@ import {
 import { AuthContext, type AuthStatus, type UserProfile } from './AuthContext';
 import { useAppStore } from '../store/useAppStore';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+function getApiBaseUrl(): string {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return `${window.location.origin}/api`;
+  }
+  return 'http://localhost:5000/api';
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
@@ -30,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const idToken = await user.getIdToken(true);
     console.log('[AUTH] Firebase user:', user?.uid);
 
-    const res = await fetch(`${API_BASE_URL}/auth/session`, {
+    const res = await fetch(`${getApiBaseUrl()}/auth/session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -53,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // 2. Fetch canonical user profile from GET /api/profiles/me with backend JWT
   const fetchProfileMe = useCallback(async (authToken: string): Promise<{ profile: UserProfile | null; status: number }> => {
     try {
-      const res = await fetch(`${API_BASE_URL}/profiles/me`, {
+      const res = await fetch(`${getApiBaseUrl()}/profiles/me`, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${authToken}`,
@@ -106,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Attempt ONE retry with fresh Firebase token
         console.warn('[AUTH] 401 on profile fetch. Retrying token refresh...');
         const freshIdToken = await user.getIdToken(true);
-        const retrySession = await fetch(`${API_BASE_URL}/auth/session`, {
+        const retrySession = await fetch(`${getApiBaseUrl()}/auth/session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken: freshIdToken }),

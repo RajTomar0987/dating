@@ -1,7 +1,15 @@
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../data/mockData';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+function getApiBaseUrl(): string {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return `${window.location.origin}/api`;
+  }
+  return 'http://localhost:5000/api';
+}
 
 // Helper for authorized fetch
 async function apiFetch(endpoint: string, options: RequestInit = {}) {
@@ -19,7 +27,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
   };
 
   try {
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const res = await fetch(`${getApiBaseUrl()}${endpoint}`, {
       ...options,
       headers
     });
