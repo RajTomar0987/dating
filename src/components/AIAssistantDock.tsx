@@ -86,7 +86,7 @@ export default function AIAssistantDock() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 surface-5">
+    <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-40 surface-5">
       {!isOpen && (
         <AIOrb size="sm" label="Aura Assistant" onClick={() => setIsOpen(true)} />
       )}

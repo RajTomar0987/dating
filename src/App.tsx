@@ -57,7 +57,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const { notifications, removeToast, highContrast, reducedMotion } = useAppStore();
 
   return (
-    <div className={`min-h-screen bg-bg-luxury text-white relative font-sans selection:bg-primary/30 perspective-1200 ${highContrast ? 'high-contrast' : ''} ${reducedMotion ? 'reduced-motion' : ''}`}>
+    <div className={`min-h-[100dvh] w-full bg-bg-luxury text-white relative font-sans selection:bg-primary/30 md:perspective-1200 overflow-x-hidden ${highContrast ? 'high-contrast' : ''} ${reducedMotion ? 'reduced-motion' : ''}`}>
       <ParticleBg />
       <DynamicIsland />
       <AIAssistantDock />

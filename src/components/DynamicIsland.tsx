@@ -11,12 +11,12 @@ export default function DynamicIsland() {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 surface-4 pointer-events-auto">
+    <div className="fixed top-3 left-1/2 -translate-x-1/2 z-40 surface-4 pointer-events-auto max-w-[calc(100vw-24px)]">
       <motion.div
         layout
         onClick={() => setIsExpanded(!isExpanded)}
-        className="dynamic-island px-4 py-2 flex items-center gap-3 cursor-pointer select-none"
-        animate={{ width: isExpanded ? 420 : 'auto' }}
+        className="dynamic-island px-3.5 py-1.5 md:px-4 md:py-2 flex items-center gap-3 cursor-pointer select-none max-w-full"
+        animate={{ width: isExpanded ? Math.min(420, typeof window !== 'undefined' ? window.innerWidth - 32 : 360) : 'auto' }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
       >
         {/* Live Pulse Indicator */}

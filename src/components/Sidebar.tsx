@@ -100,12 +100,11 @@ export default function Sidebar() {
   ];
 
   const mobileItems = [
-    { id: 'companion', name: 'Companion', icon: Bot },
     { id: 'home', name: 'Dashboard', icon: Activity },
     { id: 'deck', name: 'Discover', icon: Heart },
     { id: 'chats', name: 'Chats', icon: MessageCircle },
-    { id: 'calendar', name: 'Calendar', icon: Calendar },
-    { id: 'wellness', name: 'Wellness', icon: Activity }
+    { id: 'companion', name: 'Companion', icon: Bot },
+    { id: 'profile', name: 'Profile', icon: Users }
   ];
 
   const displayName = profile?.display_name || profile?.first_name || userProfile?.name || 'User';
@@ -283,7 +282,7 @@ export default function Sidebar() {
       </aside>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#040408]/95 border-t border-white/10 flex items-center justify-around px-3 z-40 backdrop-blur-2xl shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#040408]/95 border-t border-white/10 grid grid-cols-5 items-center px-1 z-50 backdrop-blur-2xl shadow-[0_-10px_30px_rgba(0,0,0,0.9)] pb-[env(safe-area-inset-bottom)] w-full max-w-full">
         {mobileItems.map(item => {
           const Icon = item.icon;
           const isActive = activeId === item.id;
@@ -292,17 +291,17 @@ export default function Sidebar() {
               key={item.id}
               onClick={() => navigateTo(item.id)}
               aria-label={`Navigate to ${item.name}`}
-              className={`flex flex-col items-center justify-center gap-1 px-3 py-1 rounded-xl transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center gap-0.5 py-1 transition-all cursor-pointer w-full min-w-0 px-0.5 ${
                 isActive ? 'text-white scale-105' : 'text-white/40 hover:text-white/70'
               }`}
             >
               <div className={`relative ${isActive ? 'text-accent' : ''}`}>
-                <Icon size={19} className={isActive ? 'fill-accent/20' : ''} />
+                <Icon size={19} className={isActive ? 'fill-accent/20 text-accent' : ''} />
                 {isActive && (
                   <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_rgba(236,72,153,0.8)]" />
                 )}
               </div>
-              <span className={`text-[9px] font-medium transition-colors ${isActive ? 'text-white font-semibold' : 'text-white/40'}`}>
+              <span className={`text-[9.5px] font-medium tracking-tight truncate w-full transition-colors text-center ${isActive ? 'text-white font-semibold' : 'text-white/40'}`}>
                 {item.name}
               </span>
             </button>

@@ -252,14 +252,14 @@ export default function Chat() {
     : messages;
 
   return (
-    <div className="flex min-h-screen bg-bg-luxury font-sans text-white relative select-none">
+    <div className="flex min-h-[100dvh] w-full max-w-full bg-bg-luxury font-sans text-white relative select-none">
       {/* 3D Neural Particles Background */}
       <ParticleBg />
 
       <Sidebar />
 
       {/* Main 3-Column Conversation Center */}
-      <main className="flex-1 ml-0 md:ml-64 p-3 md:p-6 pb-24 md:pb-6 grid grid-cols-12 gap-4 h-screen max-h-screen overflow-hidden relative z-10">
+      <main className="flex-1 ml-0 md:ml-64 w-full min-w-0 p-3 md:p-6 pb-20 md:pb-6 grid grid-cols-12 gap-4 h-[calc(100dvh-4rem)] md:h-screen md:max-h-screen overflow-hidden relative z-10">
         
         {/* LEFT COLUMN: CONVERSATION LIST (REAL MATCHES & AI COMPANIONS) */}
         <div className="col-span-12 md:col-span-3 flex flex-col gap-3 h-full overflow-hidden">

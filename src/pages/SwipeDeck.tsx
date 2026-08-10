@@ -208,7 +208,7 @@ export default function SwipeDeck() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#04040A] text-white font-sans relative overflow-x-hidden selection:bg-pink-500/30 selection:text-pink-200">
+    <div className="flex min-h-[100dvh] w-full max-w-full bg-[#04040A] text-white font-sans relative overflow-x-hidden selection:bg-pink-500/30 selection:text-pink-200">
       
       {/* Dynamic Ambient Background */}
       <ParticleBg />
@@ -221,7 +221,7 @@ export default function SwipeDeck() {
       <Sidebar />
 
       {/* Main Viewport Content */}
-      <main className="flex-1 ml-0 md:ml-64 p-4 md:p-8 pb-32 md:pb-16 max-w-7xl mx-auto space-y-12 relative z-10 overflow-x-hidden">
+      <main className="flex-1 ml-0 md:ml-64 w-full max-w-7xl mx-auto min-w-0 p-3.5 sm:p-4 md:p-8 pb-28 md:pb-16 space-y-8 md:space-y-12 relative z-10 overflow-x-hidden">
         
         {/* ====================================================
             SECTION 1: HERO SEARCH BAR WITH VOICE & AI PROMPTS

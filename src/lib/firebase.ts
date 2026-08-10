@@ -1,6 +1,9 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getAuth,
+  setPersistence,
+  browserLocalPersistence,
+  indexedDBLocalPersistence,
   GoogleAuthProvider,
   PhoneAuthProvider,
   OAuthProvider,
@@ -36,6 +39,11 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('DemoPlaceholder'))
 // Initialize Firebase (singleton)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
+
+// Enforce resilient browser persistence
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+  console.warn('[FIREBASE] Persistence setup notice:', err?.message || err);
+});
 
 // Auth Providers
 const googleProvider = new GoogleAuthProvider();
