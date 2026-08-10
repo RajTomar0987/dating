@@ -16,13 +16,22 @@ import {
 } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyDemoPlaceholderApiKey_AuraAI2026',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'aura-ai-dating.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'aura-ai-dating',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'aura-ai-dating.firebasestorage.app',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '123456789012',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:123456789012:web:demo1234567890',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBdgibMHNrX9ZQ6E2-fjuMDAj2uCultFqc',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'auraai-c70b0.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'auraai-c70b0',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'auraai-c70b0.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '853425447268',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:853425447268:web:604381a97d877efedd5a71',
 };
+
+// Safe diagnostic logging (without exposing API keys)
+console.log('[FIREBASE] projectId:', firebaseConfig.projectId);
+console.log('[FIREBASE] authDomain:', firebaseConfig.authDomain);
+console.log('[FIREBASE] API key configured:', Boolean(firebaseConfig.apiKey));
+
+if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('DemoPlaceholder')) {
+  console.error('[FIREBASE] Invalid or missing Firebase API Key configuration!');
+}
 
 // Initialize Firebase (singleton)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
