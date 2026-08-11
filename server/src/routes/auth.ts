@@ -18,11 +18,26 @@ function getJwtSecret(): string {
  * Creates a Supabase profile if one doesn't exist.
  */
 router.post('/session', async (req: Request, res: Response): Promise<void> => {
-  const { idToken } = req.body;
+  // Support both body { idToken } and Authorization: Bearer <token> header
+  const authHeader = req.headers.authorization || '';
+  const headerToken = authHeader.startsWith('Bearer ')
+    ? authHeader.substring(7).trim()
+    : authHeader.trim();
+  const rawToken = req.body?.idToken || headerToken;
 
-  if (!idToken) {
-    res.status(400).json({ error: 'Missing idToken in request body' });
+  if (!rawToken) {
+    console.warn('[AUTH] Session request rejected: Missing idToken or Authorization header');
+    res.status(400).json({ error: 'Missing idToken in request body or Authorization header' });
     return;
+  }
+
+  // Strip accidental surrounding quotes or "Bearer " prefix if passed in body string
+  let idToken = rawToken.trim();
+  if (idToken.startsWith('Bearer ')) {
+    idToken = idToken.substring(7).trim();
+  }
+  if (idToken.startsWith('"') && idToken.endsWith('"')) {
+    idToken = idToken.slice(1, -1).trim();
   }
 
   try {
