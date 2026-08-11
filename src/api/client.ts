@@ -2,16 +2,19 @@ import { supabase } from '../lib/supabase';
 import type { Profile } from '../data/mockData';
 
 function getApiBaseUrl(): string {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+  let url = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
+  if (!url) {
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      url = 'https://dating-f5pp.onrender.com/api';
+    } else {
+      url = 'http://localhost:5000/api';
+    }
   }
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
+  url = url.trim().replace(/\/+$/, '');
+  if (!url.endsWith('/api')) {
+    url = `${url}/api`;
   }
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return 'https://dating-f5pp.onrender.com/api';
-  }
-  return 'http://localhost:5000/api';
+  return url;
 }
 
 // Helper for authorized fetch

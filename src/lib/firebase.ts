@@ -19,12 +19,12 @@ import {
 } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: (import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBdgibMHNrX9ZQ6E2-fjuMDAj2uCultFqc').trim(),
-  authDomain: (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'auraai-c70b0.firebaseapp.com').trim(),
-  projectId: (import.meta.env.VITE_FIREBASE_PROJECT_ID || 'auraai-c70b0').trim(),
-  storageBucket: (import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'auraai-c70b0.firebasestorage.app').trim(),
-  messagingSenderId: (import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '853425447268').trim(),
-  appId: (import.meta.env.VITE_FIREBASE_APP_ID || '1:853425447268:web:604381a97d877efedd5a71').trim(),
+  apiKey: (import.meta.env.VITE_FIREBASE_API_KEY || '').trim(),
+  authDomain: (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '').trim(),
+  projectId: (import.meta.env.VITE_FIREBASE_PROJECT_ID || '').trim(),
+  storageBucket: (import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '').trim(),
+  messagingSenderId: (import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '').trim(),
+  appId: (import.meta.env.VITE_FIREBASE_APP_ID || '').trim(),
 };
 
 // Safe diagnostic validation
@@ -45,11 +45,11 @@ function validateFirebaseConfig(config: typeof firebaseConfig): boolean {
     : 'MISSING';
 
   console.log('[FIREBASE] Validating Firebase initialization parameters:');
-  console.log('[FIREBASE] Project ID:', config.projectId);
-  console.log('[FIREBASE] Auth Domain:', config.authDomain);
-  console.log('[FIREBASE] Storage Bucket:', config.storageBucket);
-  console.log('[FIREBASE] Messaging Sender ID:', config.messagingSenderId);
-  console.log('[FIREBASE] App ID:', config.appId);
+  console.log('[FIREBASE] Project ID:', config.projectId || 'MISSING');
+  console.log('[FIREBASE] Auth Domain:', config.authDomain || 'MISSING');
+  console.log('[FIREBASE] Storage Bucket:', config.storageBucket || 'MISSING');
+  console.log('[FIREBASE] Messaging Sender ID:', config.messagingSenderId || 'MISSING');
+  console.log('[FIREBASE] App ID:', config.appId || 'MISSING');
   console.log('[FIREBASE] API Key (Masked):', maskedApiKey);
 
   if (missing.length > 0) {
