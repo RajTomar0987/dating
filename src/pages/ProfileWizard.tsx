@@ -48,7 +48,18 @@ const LANGUAGE_OPTIONS = [
   'Japanese', 'Korean', 'Arabic', 'Portuguese', 'Russian', 'Italian'
 ];
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+function getApiBaseUrl(): string {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return 'https://dating-f5pp.onrender.com/api';
+  }
+  return 'http://localhost:5000/api';
+}
 
 export default function ProfileWizard() {
   const navigate = useNavigate();
@@ -219,7 +230,7 @@ export default function ProfileWizard() {
         console.log("No JWT found, re-establishing session from Firebase user...");
         try {
           const idToken = await firebaseUser.getIdToken(true);
-          const sessionRes = await fetch(`${API_BASE_URL}/auth/session`, {
+          const sessionRes = await fetch(`${getApiBaseUrl()}/auth/session`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ idToken }),
@@ -245,9 +256,9 @@ export default function ProfileWizard() {
       };
 
       console.log('[PROFILE] Saving profile');
-      console.log('[PROFILE] Endpoint:', `${API_BASE_URL}/profiles/complete`);
+      console.log('[PROFILE] Endpoint:', `${getApiBaseUrl()}/profiles/complete`);
 
-      const res = await fetch(`${API_BASE_URL}/profiles/complete`, {
+      const res = await fetch(`${getApiBaseUrl()}/profiles/complete`, {
         method: 'POST',
         headers,
         body: JSON.stringify(profileData),

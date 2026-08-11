@@ -15,11 +15,14 @@ import { AuthContext, type AuthStatus, type UserProfile } from './AuthContext';
 import { useAppStore } from '../store/useAppStore';
 
 function getApiBaseUrl(): string {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return `${window.location.origin}/api`;
+    return 'https://dating-f5pp.onrender.com/api';
   }
   return 'http://localhost:5000/api';
 }

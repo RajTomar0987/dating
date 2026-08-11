@@ -19,22 +19,49 @@ import {
 } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBdgibMHNrX9ZQ6E2-fjuMDAj2uCultFqc',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'auraai-c70b0.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'auraai-c70b0',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'auraai-c70b0.firebasestorage.app',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '853425447268',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:853425447268:web:604381a97d877efedd5a71',
+  apiKey: (import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBdgibMHNrX9ZQ6E2-fjuMDAj2uCultFqc').trim(),
+  authDomain: (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'auraai-c70b0.firebaseapp.com').trim(),
+  projectId: (import.meta.env.VITE_FIREBASE_PROJECT_ID || 'auraai-c70b0').trim(),
+  storageBucket: (import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'auraai-c70b0.firebasestorage.app').trim(),
+  messagingSenderId: (import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '853425447268').trim(),
+  appId: (import.meta.env.VITE_FIREBASE_APP_ID || '1:853425447268:web:604381a97d877efedd5a71').trim(),
 };
 
-// Safe diagnostic logging (without exposing API keys)
-console.log('[FIREBASE] projectId:', firebaseConfig.projectId);
-console.log('[FIREBASE] authDomain:', firebaseConfig.authDomain);
-console.log('[FIREBASE] API key configured:', Boolean(firebaseConfig.apiKey));
+// Safe diagnostic validation
+function validateFirebaseConfig(config: typeof firebaseConfig): boolean {
+  const missing: string[] = [];
 
-if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('DemoPlaceholder')) {
-  console.error('[FIREBASE] Invalid or missing Firebase API Key configuration!');
+  if (!config.apiKey || config.apiKey.includes('DemoPlaceholder') || config.apiKey.length < 10) {
+    missing.push('VITE_FIREBASE_API_KEY');
+  }
+  if (!config.authDomain) missing.push('VITE_FIREBASE_AUTH_DOMAIN');
+  if (!config.projectId) missing.push('VITE_FIREBASE_PROJECT_ID');
+  if (!config.storageBucket) missing.push('VITE_FIREBASE_STORAGE_BUCKET');
+  if (!config.messagingSenderId) missing.push('VITE_FIREBASE_MESSAGING_SENDER_ID');
+  if (!config.appId) missing.push('VITE_FIREBASE_APP_ID');
+
+  const maskedApiKey = config.apiKey
+    ? `${config.apiKey.substring(0, 6)}...${config.apiKey.substring(config.apiKey.length - 4)}`
+    : 'MISSING';
+
+  console.log('[FIREBASE] Validating Firebase initialization parameters:');
+  console.log('[FIREBASE] Project ID:', config.projectId);
+  console.log('[FIREBASE] Auth Domain:', config.authDomain);
+  console.log('[FIREBASE] Storage Bucket:', config.storageBucket);
+  console.log('[FIREBASE] Messaging Sender ID:', config.messagingSenderId);
+  console.log('[FIREBASE] App ID:', config.appId);
+  console.log('[FIREBASE] API Key (Masked):', maskedApiKey);
+
+  if (missing.length > 0) {
+    console.error(`[FIREBASE] ERROR: The following Firebase configuration fields are missing or invalid: ${missing.join(', ')}`);
+    return false;
+  }
+
+  console.log('[FIREBASE] Firebase configuration validated successfully.');
+  return true;
 }
+
+validateFirebaseConfig(firebaseConfig);
 
 // Initialize Firebase (singleton)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
