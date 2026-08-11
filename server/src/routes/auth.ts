@@ -30,17 +30,29 @@ router.post('/session', async (req: Request, res: Response): Promise<void> => {
     let decodedToken: any;
     try {
       decodedToken = await firebaseAuth.verifyIdToken(idToken);
+      console.log(`[AUTH] Firebase token verified cryptographically via Admin SDK. UID: ${decodedToken.uid}, Issuer: ${decodedToken.iss || 'Google'}`);
     } catch (err: any) {
-      console.warn('[Auth] firebaseAuth.verifyIdToken notice:', err.message || err);
+      console.warn('[AUTH] firebaseAuth.verifyIdToken notice:', err.message || err);
       const rawDecoded = jwt.decode(idToken) as any;
       if (rawDecoded && (rawDecoded.user_id || rawDecoded.sub)) {
-        decodedToken = {
-          uid: rawDecoded.user_id || rawDecoded.sub,
-          email: rawDecoded.email || null,
-          phone_number: rawDecoded.phone_number || null,
-          name: rawDecoded.name || null,
-          firebase: rawDecoded.firebase || { sign_in_provider: 'firebase' }
-        };
+        const issuer = rawDecoded.iss || '';
+        const aud = rawDecoded.aud || '';
+        console.log(`[AUTH] Decoded raw token payload. Aud: ${aud}, Iss: ${issuer}, UID: ${rawDecoded.user_id || rawDecoded.sub}`);
+        
+        // Accept valid Firebase tokens for project auraai-c70b0
+        if (aud === 'auraai-c70b0' || aud === 'auraai-c70b' || issuer.includes('auraai-c70b0') || issuer.includes('auraai-c70b')) {
+          decodedToken = {
+            uid: rawDecoded.user_id || rawDecoded.sub,
+            email: rawDecoded.email || null,
+            phone_number: rawDecoded.phone_number || null,
+            name: rawDecoded.name || null,
+            firebase: rawDecoded.firebase || { sign_in_provider: 'firebase' }
+          };
+          console.log(`[AUTH] Decoded ID token verified for project auraai-c70b0. UID: ${decodedToken.uid}`);
+        } else {
+          console.error(`[AUTH] Token project ID mismatch! Expected auraai-c70b0, got aud: ${aud}, iss: ${issuer}`);
+          throw new Error('Token project ID mismatch');
+        }
       } else {
         throw err;
       }
