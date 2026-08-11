@@ -19,12 +19,12 @@ import {
 } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: (import.meta.env.VITE_FIREBASE_API_KEY || '').trim(),
-  authDomain: (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '').trim(),
-  projectId: (import.meta.env.VITE_FIREBASE_PROJECT_ID || '').trim(),
-  storageBucket: (import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '').trim(),
-  messagingSenderId: (import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '').trim(),
-  appId: (import.meta.env.VITE_FIREBASE_APP_ID || '').trim(),
+  apiKey: (import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBdgibMHNrX9ZQ6E2-fjuMDAj2uCultFqc').trim(),
+  authDomain: (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'auraai-c70b0.firebaseapp.com').trim(),
+  projectId: (import.meta.env.VITE_FIREBASE_PROJECT_ID || 'auraai-c70b0').trim(),
+  storageBucket: (import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'auraai-c70b0.firebasestorage.app').trim(),
+  messagingSenderId: (import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '853425447268').trim(),
+  appId: (import.meta.env.VITE_FIREBASE_APP_ID || '1:853425447268:web:604381a97d877efedd5a71').trim(),
 };
 
 // Safe diagnostic validation
