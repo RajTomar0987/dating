@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Camera, User, Cake, Heart, Ruler, GraduationCap, Briefcase, Languages,
@@ -66,16 +66,23 @@ function getApiBaseUrl(): string {
 
 export default function ProfileWizard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { firebaseUser, jwt, profile, status, setProfile, refreshProfile } = useAuth();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
-    if (status === 'authenticated' && profile?.profile_completed) {
-      navigate('/dashboard', { replace: true });
+    if (status === 'authenticated' && profile) {
+      const fromLocation = (location.state as any)?.from;
+      const targetPath = fromLocation?.pathname;
+      const targetSearch = fromLocation?.search || '';
+      const destination = (targetPath && targetPath !== '/onboarding' && targetPath !== '/login')
+        ? `${targetPath}${targetSearch}`
+        : '/dashboard';
+      navigate(destination, { replace: true });
     }
-  }, [status, profile, navigate]);
+  }, [status, profile, navigate, location.state]);
 
   // Step 1: Photos
   const [photos, setPhotos] = useState<string[]>([]);
@@ -289,7 +296,15 @@ export default function ProfileWizard() {
         setProfile(responseBody.profile);
       }
       await refreshProfile();
-      navigate('/dashboard', { replace: true });
+
+      const fromLocation = (location.state as any)?.from;
+      const targetPath = fromLocation?.pathname;
+      const targetSearch = fromLocation?.search || '';
+      const destination = (targetPath && targetPath !== '/onboarding' && targetPath !== '/login')
+        ? `${targetPath}${targetSearch}`
+        : '/dashboard';
+
+      navigate(destination, { replace: true });
     } catch (err: any) {
       console.error('Profile save error:', err);
       alert(`Failed to save profile: ${err.message || err}`);

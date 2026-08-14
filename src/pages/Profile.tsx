@@ -443,7 +443,7 @@ export default function Profile() {
         </button>
 
         <button 
-          onClick={() => setActiveTab('onboarding')}
+          onClick={() => navigate('/settings')}
           className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
         >
           <Sparkles size={16} />

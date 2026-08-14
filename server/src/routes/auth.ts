@@ -86,7 +86,7 @@ router.post('/session', async (req: Request, res: Response): Promise<void> => {
       const { data: existingProfile, error: lookupError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('firebase_uid', uid)
+        .or(`firebase_uid.eq.${uid},id.eq.${uid}`)
         .maybeSingle();
 
       if (lookupError && lookupError.code !== 'PGRST116') {

@@ -109,11 +109,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Query database profile using verified JWT
       const { profile: loadedProfile, status: profileHttpStatus } = await fetchProfileMe(token);
 
-      if (profileHttpStatus === 200 && loadedProfile) {
-        setProfile(loadedProfile);
+      const finalProfile = loadedProfile || sessionProfile;
+
+      if (finalProfile) {
+        console.log('[AUTH] Valid profile resolved for user:', finalProfile.id || finalProfile.firebase_uid);
+        setProfile(finalProfile);
         setStatus('authenticated');
       } else if (profileHttpStatus === 404) {
-        // Genuine missing profile -> onboarding required
+        // Genuine missing profile -> PROFILE_NOT_FOUND
+        console.log('PROFILE_NOT_FOUND');
         setProfile(null);
         setStatus('needs-profile');
       } else if (profileHttpStatus === 401) {
@@ -129,15 +133,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (retrySession.ok) {
           const retryData = await retrySession.json();
           const retryToken = retryData.token;
+          const retrySessionProfile = retryData.profile;
           setJwt(retryToken);
           localStorage.setItem('aura_jwt_token', retryToken);
 
           const { profile: retryLoaded, status: retryStatus } = await fetchProfileMe(retryToken);
-          if (retryStatus === 200 && retryLoaded) {
-            setProfile(retryLoaded);
+          const retryFinal = retryLoaded || retrySessionProfile;
+
+          if (retryFinal) {
+            console.log('[AUTH] Valid profile resolved after retry token refresh');
+            setProfile(retryFinal);
             setStatus('authenticated');
             return;
           } else if (retryStatus === 404) {
+            console.log('PROFILE_NOT_FOUND');
             setProfile(null);
             setStatus('needs-profile');
             return;
@@ -152,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         // 500 or Network failure -> DO NOT convert 500 to needs-profile!
         console.error('[AUTH] Backend server error loading profile. HTTP Status:', profileHttpStatus);
-        if (sessionProfile && sessionProfile.profile_completed) {
+        if (sessionProfile) {
           setProfile(sessionProfile);
           setStatus('authenticated');
         } else {
@@ -293,12 +302,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const clearError = useCallback(() => setError(null), []);
 
+  const isFullySettled = authInitialized && !profileLoading;
+
   const contextValue = useMemo(() => ({
     firebaseUser,
     profile,
     jwt,
-    status: authInitialized ? status : 'loading' as AuthStatus,
-    loading: !authInitialized || status === 'loading',
+    status: isFullySettled ? status : ('loading' as AuthStatus),
+    loading: !isFullySettled || status === 'loading',
     profileLoading,
     error,
     loginWithEmail,
@@ -311,7 +322,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile: handleSetProfile,
     clearError,
   }), [
-    firebaseUser, profile, jwt, status, authInitialized, profileLoading, error,
+    firebaseUser, profile, jwt, status, isFullySettled, profileLoading, error,
     loginWithEmail, signupWithEmail, loginWithGoogle, loginWithPhone, verifyPhoneOTP,
     logout, refreshProfile, handleSetProfile, clearError,
   ]);

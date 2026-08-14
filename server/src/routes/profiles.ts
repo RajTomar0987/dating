@@ -134,7 +134,7 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('firebase_uid', firebaseUid)
+        .or(`firebase_uid.eq.${firebaseUid},id.eq.${firebaseUid}`)
         .maybeSingle();
 
       dbProfile = data;
@@ -162,7 +162,7 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
       return;
     }
 
-    console.log('[PROFILE] Profile found: false');
+    console.log('PROFILE_NOT_FOUND');
     res.status(404).json({ error: 'PROFILE_NOT_FOUND' });
   } catch (err: any) {
     console.error('[PROFILE] Unexpected error:', err);

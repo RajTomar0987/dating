@@ -9,11 +9,11 @@ interface RequireAuthProps {
 }
 
 export default function RequireAuth({ children, requireProfile = true }: RequireAuthProps) {
-  const { status, loading } = useAuth();
+  const { status, loading, profileLoading } = useAuth();
   const location = useLocation();
 
-  if (loading || status === 'loading') {
-    return <LoadingScreen />;
+  if (loading || profileLoading || status === 'loading') {
+    return <LoadingScreen message="Verifying authentication & profile..." />;
   }
 
   if (status === 'unauthenticated') {
@@ -21,7 +21,7 @@ export default function RequireAuth({ children, requireProfile = true }: Require
   }
 
   if (requireProfile && status === 'needs-profile') {
-    return <Navigate to="/onboarding" replace />;
+    return <Navigate to="/onboarding" state={{ from: location }} replace />;
   }
 
   return <>{children}</>;

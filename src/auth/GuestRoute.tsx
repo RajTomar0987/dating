@@ -8,17 +8,22 @@ interface GuestRouteProps {
 }
 
 export default function GuestRoute({ children }: GuestRouteProps) {
-  const { status, loading } = useAuth();
+  const { status, loading, profileLoading } = useAuth();
   const location = useLocation();
 
-  if (loading || status === 'loading') {
-    return <LoadingScreen />;
+  if (loading || profileLoading || status === 'loading') {
+    return <LoadingScreen message="Checking session..." />;
   }
 
   if (status === 'authenticated') {
-    // Redirect to where they came from, or dashboard
-    const from = (location.state as any)?.from?.pathname || '/dashboard';
-    return <Navigate to={from} replace />;
+    const fromLocation = (location.state as any)?.from;
+    const targetPath = fromLocation?.pathname;
+    const targetSearch = fromLocation?.search || '';
+    const destination = (targetPath && targetPath !== '/login' && targetPath !== '/onboarding')
+      ? `${targetPath}${targetSearch}`
+      : '/dashboard';
+
+    return <Navigate to={destination} replace />;
   }
 
   if (status === 'needs-profile') {
