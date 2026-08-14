@@ -284,6 +284,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await establishSession(firebaseUser);
   }, [firebaseUser, establishSession]);
 
+  const handleSetProfile = useCallback((newProfile: UserProfile | null) => {
+    setProfile(newProfile);
+    if (newProfile && newProfile.profile_completed !== false) {
+      setStatus('authenticated');
+    }
+  }, []);
+
   const clearError = useCallback(() => setError(null), []);
 
   const contextValue = useMemo(() => ({
@@ -301,12 +308,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     verifyPhoneOTP,
     logout,
     refreshProfile,
-    setProfile,
+    setProfile: handleSetProfile,
     clearError,
   }), [
     firebaseUser, profile, jwt, status, authInitialized, profileLoading, error,
     loginWithEmail, signupWithEmail, loginWithGoogle, loginWithPhone, verifyPhoneOTP,
-    logout, refreshProfile, clearError,
+    logout, refreshProfile, handleSetProfile, clearError,
   ]);
 
   return (

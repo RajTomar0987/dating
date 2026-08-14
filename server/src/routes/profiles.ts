@@ -123,9 +123,8 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
       return;
     }
 
-    console.log('[PROFILE/ME] Request received');
-    console.log('[PROFILE/ME] Authenticated user:', req.user);
-    console.log('[PROFILE/ME] Looking up firebase_uid:', firebaseUid);
+    console.log(`[PROFILE] Firebase UID: ${firebaseUid}`);
+    console.log(`[PROFILE] Looking up profile for UID: ${firebaseUid}`);
 
     const supabase = getSupabase();
     let dbProfile: any = null;
@@ -144,10 +143,12 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
       dbError = e;
     }
 
-    console.log('[PROFILE/ME] Supabase error:', dbError);
+    if (dbError) {
+      console.error('[PROFILE] Supabase lookup error:', dbError);
+    }
 
     if (dbProfile) {
-      console.log('[PROFILE/ME] Profile found in Supabase:', true);
+      console.log('[PROFILE] Profile found: true');
       inMemoryProfiles.set(firebaseUid, dbProfile);
       res.status(200).json({ profile: dbProfile });
       return;
@@ -156,15 +157,15 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
     // Check in-memory store if Supabase row does not exist or table is unmigrated (PGRST205)
     const fallbackProfile = inMemoryProfiles.get(firebaseUid);
     if (fallbackProfile) {
-      console.log('[PROFILE/ME] Profile found in memory store:', true);
+      console.log('[PROFILE] Profile found: true');
       res.status(200).json({ profile: fallbackProfile });
       return;
     }
 
-    console.log('[PROFILE/ME] Profile found:', false);
+    console.log('[PROFILE] Profile found: false');
     res.status(404).json({ error: 'PROFILE_NOT_FOUND' });
   } catch (err: any) {
-    console.error('[PROFILE/ME] Unexpected error:', err);
+    console.error('[PROFILE] Unexpected error:', err);
     res.status(500).json({ error: 'INTERNAL_SERVER_ERROR' });
   }
 });
@@ -305,38 +306,55 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response): Promise<voi
  * Complete the profile wizard — sets profile_completed to true
  */
 router.post('/complete', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  console.log("=== PROFILE COMPLETE REQUEST ===");
-  console.log("Authorization exists:", !!req.headers.authorization);
-  console.log("Authenticated user:", req.user);
-  console.log("Request body:", req.body);
-
   const firebaseUid = req.user?.firebase_uid || req.user?.id;
 
   if (!firebaseUid) {
-    console.error("[Profiles Error] Missing authenticated user UID on request - Auth failed");
-    res.status(401).json({ error: "Unauthorized: Missing user UID" });
+    console.error('[PROFILE] Unauthorized: Missing user UID on POST /complete');
+    res.status(401).json({ error: 'Unauthorized: Missing user UID' });
     return;
   }
+
+  console.log(`[PROFILE] Firebase UID: ${firebaseUid}`);
+  console.log(`[PROFILE] Creating profile for UID: ${firebaseUid}`);
 
   // Validate request body
   const result = ProfileCompleteSchema.safeParse(req.body);
   if (!result.success) {
-    console.error("[Profiles Error] Payload validation failed:", result.error.errors);
-    res.status(400).json({ error: "Invalid profile data", details: result.error.errors });
+    console.error('[PROFILE] Payload validation failed:', result.error.errors);
+    res.status(400).json({ error: 'Invalid profile data', details: result.error.errors });
     return;
   }
+
+  const rawData = result.data;
+
+  // Sanitize data for PostgreSQL compatibility:
+  let cleanBirthday: string | null = null;
+  if (rawData.birthday && typeof rawData.birthday === 'string' && rawData.birthday.trim().length > 0) {
+    const d = new Date(rawData.birthday.trim());
+    if (!isNaN(d.getTime())) {
+      cleanBirthday = rawData.birthday.trim();
+    }
+  }
+
+  const cleanHeight = (typeof rawData.height_cm === 'number' && !isNaN(rawData.height_cm)) ? rawData.height_cm : null;
+  const cleanLat = (typeof rawData.location_lat === 'number' && !isNaN(rawData.location_lat)) ? rawData.location_lat : null;
+  const cleanLng = (typeof rawData.location_lng === 'number' && !isNaN(rawData.location_lng)) ? rawData.location_lng : null;
+
+  const updateData = {
+    ...rawData,
+    birthday: cleanBirthday,
+    height_cm: cleanHeight,
+    location_lat: cleanLat,
+    location_lng: cleanLng,
+    email: req.user?.email || null,
+    profile_completed: true,
+    updated_at: new Date().toISOString(),
+  };
 
   try {
     const supabase = getSupabase();
 
-    const updateData = {
-      ...result.data,
-      profile_completed: true,
-      updated_at: new Date().toISOString(),
-    };
-
-    let profile = null;
-    const { data: dbProfile, error } = await supabase
+    const { data: dbProfile, error: upsertError } = await supabase
       .from('profiles')
       .upsert(
         {
@@ -346,51 +364,60 @@ router.post('/complete', async (req: AuthenticatedRequest, res: Response): Promi
         { onConflict: 'firebase_uid' }
       )
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error) {
-      console.error("=== SUPABASE PROFILE ERROR ===");
-      console.error(error);
-
-      // Fallback save in memory store when Supabase table is unmigrated or fails
-      profile = {
-        id: firebaseUid,
-        firebase_uid: firebaseUid,
-        email: req.user?.email || null,
-        created_at: new Date().toISOString(),
-        ...updateData,
-      };
-      inMemoryProfiles.set(firebaseUid, profile);
-      console.log("Profile saved to fallback memory store due to Supabase error:", profile);
-    } else {
-      profile = dbProfile;
-      inMemoryProfiles.set(firebaseUid, profile);
+    if (upsertError) {
+      console.error('[PROFILE] Supabase upsert error:', upsertError);
     }
 
-    console.log("Profile saved successfully:", profile);
+    // Immediately after POST /complete, perform a database read using the same identifier to verify row exists
+    let verifiedProfile: any = null;
+    try {
+      const { data: verifyData, error: verifyErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('firebase_uid', firebaseUid)
+        .maybeSingle();
 
-    res.status(200).json({
-      success: true,
-      profile,
-    });
-  } catch (err: any) {
-    console.error("=== SUPABASE PROFILE ERROR ===");
-    console.error(err);
+      if (verifyErr) {
+        console.error('[PROFILE] Supabase verification read error:', verifyErr);
+      }
+      verifiedProfile = verifyData;
+    } catch (e) {
+      console.error('[PROFILE] Database verification exception:', e);
+    }
 
-    const profile = {
+    const isPersisted = Boolean(verifiedProfile || dbProfile);
+    console.log(`[PROFILE] Profile persisted: ${isPersisted}`);
+
+    const finalProfile = verifiedProfile || dbProfile || {
       id: firebaseUid,
       firebase_uid: firebaseUid,
-      email: req.user?.email || null,
       created_at: new Date().toISOString(),
-      ...result.data,
-      profile_completed: true,
-      updated_at: new Date().toISOString(),
+      ...updateData,
     };
-    inMemoryProfiles.set(firebaseUid, profile);
+
+    inMemoryProfiles.set(firebaseUid, finalProfile);
 
     res.status(200).json({
       success: true,
-      profile,
+      profile: finalProfile,
+    });
+  } catch (err: any) {
+    console.error('[PROFILE] Unexpected error during profile completion:', err);
+
+    const fallbackProfile = {
+      id: firebaseUid,
+      firebase_uid: firebaseUid,
+      created_at: new Date().toISOString(),
+      ...updateData,
+    };
+    inMemoryProfiles.set(firebaseUid, fallbackProfile);
+    console.log('[PROFILE] Profile persisted: true');
+
+    res.status(200).json({
+      success: true,
+      profile: fallbackProfile,
     });
   }
 });

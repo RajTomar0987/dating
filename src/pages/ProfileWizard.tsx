@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -66,10 +66,16 @@ function getApiBaseUrl(): string {
 
 export default function ProfileWizard() {
   const navigate = useNavigate();
-  const { firebaseUser, jwt, setProfile } = useAuth();
+  const { firebaseUser, jwt, profile, status, setProfile, refreshProfile } = useAuth();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  useEffect(() => {
+    if (status === 'authenticated' && profile?.profile_completed) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [status, profile, navigate]);
 
   // Step 1: Photos
   const [photos, setPhotos] = useState<string[]>([]);
@@ -282,6 +288,7 @@ export default function ProfileWizard() {
       if (responseBody.profile) {
         setProfile(responseBody.profile);
       }
+      await refreshProfile();
       navigate('/dashboard', { replace: true });
     } catch (err: any) {
       console.error('Profile save error:', err);
