@@ -282,7 +282,7 @@ export default function Sidebar() {
       </aside>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#040408]/95 border-t border-white/10 grid grid-cols-5 items-center px-1 z-50 backdrop-blur-2xl shadow-[0_-10px_30px_rgba(0,0,0,0.9)] pb-[env(safe-area-inset-bottom)] w-full max-w-full">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[calc(64px+env(safe-area-inset-bottom))] bg-[#060610]/95 border-t border-white/12 grid grid-cols-5 items-center px-1 z-50 backdrop-blur-2xl shadow-[0_-10px_30px_rgba(0,0,0,0.9)] pb-[env(safe-area-inset-bottom)] w-full max-w-full">
         {mobileItems.map(item => {
           const Icon = item.icon;
           const isActive = activeId === item.id;
@@ -291,17 +291,17 @@ export default function Sidebar() {
               key={item.id}
               onClick={() => navigateTo(item.id)}
               aria-label={`Navigate to ${item.name}`}
-              className={`flex flex-col items-center justify-center gap-0.5 py-1 transition-all cursor-pointer w-full min-w-0 px-0.5 ${
-                isActive ? 'text-white scale-105' : 'text-white/40 hover:text-white/70'
+              className={`flex flex-col items-center justify-center min-h-[44px] py-1 transition-all cursor-pointer w-full min-w-0 px-0.5 ${
+                isActive ? 'text-pink-500 scale-105' : 'text-white/40 hover:text-white/70'
               }`}
             >
-              <div className={`relative ${isActive ? 'text-accent' : ''}`}>
-                <Icon size={19} className={isActive ? 'fill-accent/20 text-accent' : ''} />
+              <div className="relative flex items-center justify-center">
+                <Icon size={20} className={isActive ? 'fill-pink-500/20 text-pink-500 drop-shadow-[0_0_8px_rgba(236,72,153,0.5)]' : 'text-white/40'} />
                 {isActive && (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_rgba(236,72,153,0.8)]" />
+                  <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.9)]" />
                 )}
               </div>
-              <span className={`text-[9.5px] font-medium tracking-tight truncate w-full transition-colors text-center ${isActive ? 'text-white font-semibold' : 'text-white/40'}`}>
+              <span className={`text-[9.5px] sm:text-[10px] font-medium tracking-tight truncate w-full transition-colors text-center mt-1 ${isActive ? 'text-pink-400 font-bold' : 'text-white/40'}`}>
                 {item.name}
               </span>
             </button>

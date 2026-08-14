@@ -134,14 +134,7 @@ export interface UpcomingDate {
 // MOCK DATA
 // ----------------------------------------------------
 
-export const LIVE_ACTIVITY_TICKER: LiveActivityItem[] = [
-  { id: 'lat1', icon: '❤️', text: 'Emma liked your travel photo in Kyoto', timeAgo: 'Just now', accentColor: '#EC4899' },
-  { id: 'lat2', icon: '💬', text: 'Zoe replied to your spatial architecture question', timeAgo: '2m ago', accentColor: '#3B82F6' },
-  { id: 'lat3', icon: '📅', text: 'Marcus accepted your coffee invitation at Sightglass', timeAgo: '5m ago', accentColor: '#10B981' },
-  { id: 'lat4', icon: '🎵', text: 'Sophia shared a Bach & Nils Frahm playlist', timeAgo: '8m ago', accentColor: '#A855F7' },
-  { id: 'lat5', icon: '📍', text: '14 new people joined nearby in Hayes Valley', timeAgo: '12m ago', accentColor: '#06B6D4' },
-  { id: 'lat6', icon: '✨', text: 'Aura Digital Twin found 3 higher affinity matches', timeAgo: '15m ago', accentColor: '#F59E0B' }
-];
+export const LIVE_ACTIVITY_TICKER: LiveActivityItem[] = [];
 
 export const LARGE_TINDER_MATCHES: LargeTinderMatch[] = [
   {
@@ -211,14 +204,7 @@ export const STORIES_DATA: StoryItem[] = [
   { id: 'st6', name: 'Julian Cross', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=600', storyImage: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=800', hasUnviewed: false, isOnline: true, timeAgo: '5h ago', caption: 'Chef tasting menu testing session 🍷 🍽️' }
 ];
 
-export const SOCIAL_STREAM: SocialStreamItem[] = [
-  { id: 'ss1', userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200', userName: 'Marcus V.', actionText: 'posted a new Yosemite hiking photo', timestamp: '1m ago' },
-  { id: 'ss2', userAvatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=200', userName: 'Sophia C.', actionText: 'joined Coffee Chemistry Hub', timestamp: '3m ago' },
-  { id: 'ss3', userAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200', userName: 'Elena R.', actionText: 'started typing a voice message...', timestamp: '4m ago' },
-  { id: 'ss4', userAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200', userName: 'David L.', actionText: 'is attending Secret Speakeasy Jazz Night', timestamp: '7m ago' },
-  { id: 'ss5', userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200', userName: 'Luna M.', actionText: 'uploaded a 28s voice intro note', timestamp: '10m ago' },
-  { id: 'ss6', userAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200', userName: 'Zoe H.', actionText: 'is checked in nearby at Sightglass', timestamp: '12m ago' }
-];
+export const SOCIAL_STREAM: SocialStreamItem[] = [];
 
 export const FEATURED_COUPLES: FeaturedCouple[] = [
   {
