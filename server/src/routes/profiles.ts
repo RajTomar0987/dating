@@ -145,7 +145,16 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
 
     if (dbError) {
       console.error('[PROFILE] Supabase lookup error:', JSON.stringify(dbError));
-      console.error('[PROFILE] Supabase lookup error code:', dbError.code, 'message:', dbError.message);
+      // Do NOT convert database errors into 404 PROFILE_NOT_FOUND
+      // Return 500 if database query itself fails (unless it's an in-memory test fallback)
+      const fallbackProfile = inMemoryProfiles.get(firebaseUid);
+      if (fallbackProfile) {
+        console.log('[PROFILE] Supabase error present, returning seeded memory fallback profile');
+        res.status(200).json({ profile: fallbackProfile });
+        return;
+      }
+      res.status(500).json({ error: 'DATABASE_ERROR', details: dbError?.message || String(dbError) });
+      return;
     }
 
     if (dbProfile) {
@@ -155,7 +164,7 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
       return;
     }
 
-    // Check in-memory store if Supabase row does not exist or table is unmigrated (PGRST205)
+    // Check in-memory store if Supabase row does not exist
     const fallbackProfile = inMemoryProfiles.get(firebaseUid);
     if (fallbackProfile) {
       console.log('[PROFILE] Profile found in memory fallback: true');
@@ -163,14 +172,8 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
       return;
     }
 
-    // Log WHY profile was not found — helps diagnose RLS issues
+    // Return 404 PROFILE_NOT_FOUND ONLY when profile genuinely does not exist
     console.warn('[PROFILE] PROFILE_NOT_FOUND for UID:', firebaseUid);
-    console.warn('[PROFILE] Supabase returned no rows. Possible causes:');
-    console.warn('   1. Profile was never created (user never completed onboarding)');
-    console.warn('   2. RLS policy blocking SELECT: the "Anyone can view completed profiles" policy');
-    console.warn('      only returns rows where profile_completed = true.');
-    console.warn('      If backend is using anon key instead of service_role key, RLS is active.');
-    console.warn('   3. Profile exists but firebase_uid does not match.');
     res.status(404).json({ error: 'PROFILE_NOT_FOUND' });
   } catch (err: any) {
     console.error('[PROFILE] Unexpected error:', err);
@@ -378,64 +381,33 @@ router.post('/complete', async (req: AuthenticatedRequest, res: Response): Promi
       console.error('[PROFILE] Supabase upsert error:', JSON.stringify(upsertError));
       console.error('[PROFILE] Upsert error code:', upsertError.code);
       console.error('[PROFILE] Upsert error message:', upsertError.message);
-      if (upsertError.code === '42501' || upsertError.message?.includes('policy')) {
-        console.error('🚨 [PROFILE] RLS POLICY VIOLATION — The Supabase key may be anon instead of service_role!');
-        console.error('   The profiles table has RLS enabled. INSERT/UPDATE requires service_role to bypass RLS.');
-        console.error('   FIX: Set SUPABASE_SERVICE_ROLE_KEY in your Render environment variables.');
-      }
-    } else {
-      console.log('[PROFILE] Supabase upsert succeeded. Row returned:', Boolean(dbProfile));
+      res.status(500).json({ error: 'DATABASE_WRITE_FAILED', details: upsertError.message });
+      return;
     }
 
-    // Immediately after POST /complete, perform a database read using the same identifier to verify row exists
-    let verifiedProfile: any = null;
-    try {
-      const { data: verifyData, error: verifyErr } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('firebase_uid', firebaseUid)
-        .maybeSingle();
+    // Read back from database to verify persistence
+    const { data: verifiedProfile, error: verifyErr } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('firebase_uid', firebaseUid)
+      .maybeSingle();
 
-      if (verifyErr) {
-        console.error('[PROFILE] Supabase verification read error:', verifyErr);
-      }
-      verifiedProfile = verifyData;
-    } catch (e) {
-      console.error('[PROFILE] Database verification exception:', e);
+    if (verifyErr || !verifiedProfile) {
+      console.error('[PROFILE] Persistence verification failed:', verifyErr);
+      res.status(500).json({ error: 'PERSISTENCE_VERIFICATION_FAILED', details: verifyErr?.message || 'Row not found after upsert' });
+      return;
     }
 
-    const isPersisted = Boolean(verifiedProfile || dbProfile);
-    console.log(`[PROFILE] Profile persisted: ${isPersisted}`);
-
-    const finalProfile = verifiedProfile || dbProfile || {
-      id: firebaseUid,
-      firebase_uid: firebaseUid,
-      created_at: new Date().toISOString(),
-      ...updateData,
-    };
-
-    inMemoryProfiles.set(firebaseUid, finalProfile);
+    console.log('[PROFILE] Profile persisted successfully in Supabase for UID:', firebaseUid);
+    inMemoryProfiles.set(firebaseUid, verifiedProfile);
 
     res.status(200).json({
       success: true,
-      profile: finalProfile,
+      profile: verifiedProfile,
     });
   } catch (err: any) {
     console.error('[PROFILE] Unexpected error during profile completion:', err);
-
-    const fallbackProfile = {
-      id: firebaseUid,
-      firebase_uid: firebaseUid,
-      created_at: new Date().toISOString(),
-      ...updateData,
-    };
-    inMemoryProfiles.set(firebaseUid, fallbackProfile);
-    console.log('[PROFILE] Profile persisted: true');
-
-    res.status(200).json({
-      success: true,
-      profile: fallbackProfile,
-    });
+    res.status(500).json({ error: 'INTERNAL_SERVER_ERROR', details: err?.message || String(err) });
   }
 });
 
