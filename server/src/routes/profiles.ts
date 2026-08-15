@@ -144,11 +144,12 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
     }
 
     if (dbError) {
-      console.error('[PROFILE] Supabase lookup error:', dbError);
+      console.error('[PROFILE] Supabase lookup error:', JSON.stringify(dbError));
+      console.error('[PROFILE] Supabase lookup error code:', dbError.code, 'message:', dbError.message);
     }
 
     if (dbProfile) {
-      console.log('[PROFILE] Profile found: true');
+      console.log('[PROFILE] Profile found: true, profile_completed:', dbProfile.profile_completed);
       inMemoryProfiles.set(firebaseUid, dbProfile);
       res.status(200).json({ profile: dbProfile });
       return;
@@ -157,12 +158,19 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
     // Check in-memory store if Supabase row does not exist or table is unmigrated (PGRST205)
     const fallbackProfile = inMemoryProfiles.get(firebaseUid);
     if (fallbackProfile) {
-      console.log('[PROFILE] Profile found: true');
+      console.log('[PROFILE] Profile found in memory fallback: true');
       res.status(200).json({ profile: fallbackProfile });
       return;
     }
 
-    console.log('PROFILE_NOT_FOUND');
+    // Log WHY profile was not found — helps diagnose RLS issues
+    console.warn('[PROFILE] PROFILE_NOT_FOUND for UID:', firebaseUid);
+    console.warn('[PROFILE] Supabase returned no rows. Possible causes:');
+    console.warn('   1. Profile was never created (user never completed onboarding)');
+    console.warn('   2. RLS policy blocking SELECT: the "Anyone can view completed profiles" policy');
+    console.warn('      only returns rows where profile_completed = true.');
+    console.warn('      If backend is using anon key instead of service_role key, RLS is active.');
+    console.warn('   3. Profile exists but firebase_uid does not match.');
     res.status(404).json({ error: 'PROFILE_NOT_FOUND' });
   } catch (err: any) {
     console.error('[PROFILE] Unexpected error:', err);
@@ -367,7 +375,16 @@ router.post('/complete', async (req: AuthenticatedRequest, res: Response): Promi
       .maybeSingle();
 
     if (upsertError) {
-      console.error('[PROFILE] Supabase upsert error:', upsertError);
+      console.error('[PROFILE] Supabase upsert error:', JSON.stringify(upsertError));
+      console.error('[PROFILE] Upsert error code:', upsertError.code);
+      console.error('[PROFILE] Upsert error message:', upsertError.message);
+      if (upsertError.code === '42501' || upsertError.message?.includes('policy')) {
+        console.error('🚨 [PROFILE] RLS POLICY VIOLATION — The Supabase key may be anon instead of service_role!');
+        console.error('   The profiles table has RLS enabled. INSERT/UPDATE requires service_role to bypass RLS.');
+        console.error('   FIX: Set SUPABASE_SERVICE_ROLE_KEY in your Render environment variables.');
+      }
+    } else {
+      console.log('[PROFILE] Supabase upsert succeeded. Row returned:', Boolean(dbProfile));
     }
 
     // Immediately after POST /complete, perform a database read using the same identifier to verify row exists
