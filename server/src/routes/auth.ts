@@ -83,11 +83,15 @@ router.post('/session', async (req: Request, res: Response): Promise<void> => {
     // Look up existing profile in Supabase (or fallback store)
     let profile = null;
     try {
-      const { data: existingProfile, error: lookupError } = await supabase
-        .from('profiles')
-        .select('*')
-        .or(`firebase_uid.eq.${uid},id.eq.${uid}`)
-        .maybeSingle();
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uid);
+      let query = supabase.from('profiles').select('*');
+      if (isUuid) {
+        query = query.or(`firebase_uid.eq.${uid},id.eq.${uid}`);
+      } else {
+        query = query.eq('firebase_uid', uid);
+      }
+
+      const { data: existingProfile, error: lookupError } = await query.maybeSingle();
 
       if (lookupError && lookupError.code !== 'PGRST116') {
         console.error('[Auth] Profile lookup error:', lookupError);

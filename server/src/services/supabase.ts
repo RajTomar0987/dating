@@ -32,34 +32,25 @@ export function getSupabase() {
     const cleanUrl = rawUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
     
     // CRITICAL: The backend MUST use the service_role key to bypass RLS.
-    // The anon key respects RLS policies, which block INSERT/UPDATE on profiles
-    // and only allow SELECT where profile_completed = true.
-    // This causes profile upserts to silently fail and GET /me to return 404.
-    //
-    // Priority order — prefer service_role keys, then fall back with warnings:
-    // 1. SUPABASE_SERVICE_ROLE_KEY (correct — bypasses RLS)
-    // 2. SUPABASE_KEY / SUPABASE_SECRET_KEY (may be service_role)
+    // Priority order — service_role keys first:
+    // 1. SUPABASE_SERVICE_ROLE_KEY (user-configured on Render/local)
+    // 2. SUPABASE_KEY / SUPABASE_SECRET_KEY
     // 3. DEFAULT_SUPABASE_KEY (hardcoded service_role fallback)
-    // 4. SUPABASE_ANON_KEY / VITE_SUPABASE_ANON_KEY (WRONG — will cause profile persistence failures)
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const otherKey = process.env.SUPABASE_KEY || process.env.SUPABASE_SECRET_KEY;
-    const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
     let key: string;
     let keySource: string;
 
-    if (serviceRoleKey) {
+    if (serviceRoleKey && serviceRoleKey.trim().length > 0) {
       key = serviceRoleKey.trim();
       keySource = 'SUPABASE_SERVICE_ROLE_KEY';
-    } else if (otherKey) {
+    } else if (otherKey && otherKey.trim().length > 0) {
       key = otherKey.trim();
       keySource = process.env.SUPABASE_KEY ? 'SUPABASE_KEY' : 'SUPABASE_SECRET_KEY';
-    } else if (anonKey) {
-      key = anonKey.trim();
-      keySource = process.env.SUPABASE_ANON_KEY ? 'SUPABASE_ANON_KEY' : 'VITE_SUPABASE_ANON_KEY';
     } else {
       key = DEFAULT_SUPABASE_KEY;
-      keySource = 'DEFAULT_SUPABASE_KEY (hardcoded)';
+      keySource = 'DEFAULT_SUPABASE_KEY (hardcoded service_role fallback)';
     }
 
     const role = decodeSupabaseKeyRole(key);
@@ -69,14 +60,10 @@ export function getSupabase() {
     console.log('[SUPABASE DIAGNOSTICS] Supabase key role:', role);
     console.log('[SUPABASE DIAGNOSTICS] Supabase key length:', key.length);
 
-    if (role === 'anon') {
-      console.error('🚨🚨🚨 [SUPABASE CRITICAL] Backend is using the ANON key! This will cause:');
-      console.error('   - Profile INSERT/UPDATE silently blocked by RLS');
-      console.error('   - GET /api/profiles/me returns 404 for profiles with profile_completed=false');
-      console.error('   - Users stuck in infinite onboarding loop');
-      console.error('   FIX: Set SUPABASE_SERVICE_ROLE_KEY in your Render environment variables');
-    } else if (role === 'service_role') {
+    if (role === 'service_role') {
       console.log('✅ [SUPABASE] Using service_role key — RLS bypassed (correct for backend)');
+    } else {
+      console.warn('⚠️ [SUPABASE] Key role is:', role);
     }
 
     console.log('⚡ Initializing Supabase Backend Client with URL:', cleanUrl);

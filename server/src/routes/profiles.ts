@@ -111,6 +111,10 @@ router.get('/discover', async (req: AuthenticatedRequest, res: Response): Promis
   }
 });
 
+function isUuid(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
 /**
  * GET /api/profiles/me
  * Get the authenticated user's profile from Supabase (or fallback)
@@ -131,12 +135,14 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
     let dbError: any = null;
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .or(`firebase_uid.eq.${firebaseUid},id.eq.${firebaseUid}`)
-        .maybeSingle();
+      let query = supabase.from('profiles').select('*');
+      if (isUuid(firebaseUid)) {
+        query = query.or(`firebase_uid.eq.${firebaseUid},id.eq.${firebaseUid}`);
+      } else {
+        query = query.eq('firebase_uid', firebaseUid);
+      }
 
+      const { data, error } = await query.maybeSingle();
       dbProfile = data;
       dbError = error;
     } catch (e) {
@@ -145,8 +151,6 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
 
     if (dbError) {
       console.error('[PROFILE] Supabase lookup error:', JSON.stringify(dbError));
-      // Do NOT convert database errors into 404 PROFILE_NOT_FOUND
-      // Return 500 if database query itself fails (unless it's an in-memory test fallback)
       const fallbackProfile = inMemoryProfiles.get(firebaseUid);
       if (fallbackProfile) {
         console.log('[PROFILE] Supabase error present, returning seeded memory fallback profile');
@@ -174,7 +178,7 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
 
     // Return 404 PROFILE_NOT_FOUND ONLY when profile genuinely does not exist
     console.warn('[PROFILE] PROFILE_NOT_FOUND for UID:', firebaseUid);
-    res.status(404).json({ error: 'PROFILE_NOT_FOUND' });
+    res.status(404).json({ error: 'PROFILE_NOT_FOUND', code: 'PROFILE_NOT_FOUND' });
   } catch (err: any) {
     console.error('[PROFILE] Unexpected error:', err);
     res.status(500).json({ error: 'INTERNAL_SERVER_ERROR' });
@@ -288,12 +292,14 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response): Promise<voi
     let dbProfile: any = null;
 
     try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .or(`firebase_uid.eq.${targetId},id.eq.${targetId}`)
-        .maybeSingle();
+      let query = supabase.from('profiles').select('*');
+      if (isUuid(targetId)) {
+        query = query.or(`firebase_uid.eq.${targetId},id.eq.${targetId}`);
+      } else {
+        query = query.eq('firebase_uid', targetId);
+      }
 
+      const { data } = await query.maybeSingle();
       dbProfile = data;
     } catch (e) {
       console.warn('[Profiles/:id] Supabase query notice:', e);
