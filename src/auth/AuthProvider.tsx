@@ -5,6 +5,7 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithCustomToken,
   signInWithPhoneNumber,
   signOut as firebaseSignOut,
@@ -239,6 +240,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const resetPassword = useCallback(async (email: string) => {
+    try {
+      setError(null);
+      const cleanEmail = email.trim().toLowerCase();
+      await sendPasswordResetEmail(auth, cleanEmail);
+      console.log('[AUTH] Firebase password reset email sent to:', cleanEmail);
+    } catch (err: any) {
+      const message = getFirebaseErrorMessage(err.code);
+      setError(message);
+      throw new Error(message);
+    }
+  }, []);
+
   const loginWithCustomToken = useCallback(async (customToken: string) => {
     try {
       setError(null);
@@ -326,6 +340,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error,
     loginWithEmail,
     signupWithEmail,
+    resetPassword,
     loginWithCustomToken,
     loginWithGoogle,
     loginWithPhone,
@@ -336,7 +351,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearError,
   }), [
     firebaseUser, profile, jwt, status, isFullySettled, profileLoading, error,
-    loginWithEmail, signupWithEmail, loginWithCustomToken, loginWithGoogle, loginWithPhone, verifyPhoneOTP,
+    loginWithEmail, signupWithEmail, resetPassword, loginWithCustomToken, loginWithGoogle, loginWithPhone, verifyPhoneOTP,
     logout, refreshProfile, handleSetProfile, clearError,
   ]);
 

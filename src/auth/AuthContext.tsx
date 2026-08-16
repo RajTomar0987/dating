@@ -44,6 +44,7 @@ export interface AuthContextType {
   // Actions
   loginWithEmail: (email: string, password: string) => Promise<void>;
   signupWithEmail: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   loginWithCustomToken: (customToken: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   loginWithPhone: (phoneNumber: string, recaptchaVerifier: any) => Promise<any>;
