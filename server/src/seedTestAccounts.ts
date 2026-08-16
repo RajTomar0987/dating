@@ -7,7 +7,6 @@ dotenv.config();
 import { createOrUpdateProfile } from './services/profileStore.js';
 
 export const TEST_USER_A = {
-  id: 'test_user_a_uid',
   firebase_uid: 'test_user_a_uid',
   email: 'testA@auraai.test',
   display_name: 'Test User A',
@@ -31,7 +30,6 @@ export const TEST_USER_A = {
 };
 
 export const TEST_USER_B = {
-  id: 'test_user_b_uid',
   firebase_uid: 'test_user_b_uid',
   email: 'testB@auraai.test',
   display_name: 'Test User B',

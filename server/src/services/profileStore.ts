@@ -164,8 +164,10 @@ export async function createOrUpdateProfile(firebaseUid: string, profileData: Pr
     }
   }
 
-  const payload = {
-    firebase_uid: firebaseUid,
+  const isUuid = (str: any) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
+  const payload: Record<string, any> = {
+    firebase_uid: String(firebaseUid),
     ...normalized,
     username: finalUsername,
     prompts: {
@@ -173,6 +175,10 @@ export async function createOrUpdateProfile(firebaseUid: string, profileData: Pr
       username: finalUsername,
     },
   };
+
+  if (payload.id && !isUuid(payload.id)) {
+    delete payload.id;
+  }
 
   const supabase = getSupabase();
 

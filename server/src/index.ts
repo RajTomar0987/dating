@@ -75,6 +75,13 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 app.listen(PORT, () => {
   console.log(`⚡ AuraAI Express REST API running on port ${PORT}`);
   console.log(`🩺 Health check available at http://localhost:${PORT}/api/health`);
-  seedTestAccounts();
+  
+  if (process.env.NODE_ENV === 'test' || process.env.SEED_TEST_ACCOUNTS === 'true') {
+    console.log('[STARTUP] Seeding test accounts for development/test environment...');
+    seedTestAccounts().catch((err) => console.warn('[STARTUP] Seed warning:', err));
+  } else {
+    console.log('[STARTUP] Production environment: Automatic test account seeding disabled.');
+  }
+
   ensureUsernameSchemaAndMigrateExistingUsers().catch(() => {});
 });
