@@ -317,7 +317,7 @@ router.get('/search', async (req: AuthenticatedRequest, res: Response): Promise<
 
 /**
  * GET /api/profiles/:id
- * Get profile by firebase_uid or id
+ * Get profile by firebase_uid, id, or username
  */
 router.get('/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -331,13 +331,25 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response): Promise<voi
     let profile: any = null;
     try {
       profile = await getProfileByFirebaseUid(targetId);
-    } catch {
-      // Fallback: search by id column if targetId is UUID
-      if (isUuid(targetId)) {
+    } catch (_) {}
+
+    // Fallback 1: search by id column if targetId is UUID
+    if (!profile && isUuid(targetId)) {
+      try {
         const supabase = getSupabase();
         const { data } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle();
         profile = data;
-      }
+      } catch (_) {}
+    }
+
+    // Fallback 2: search by username (case-insensitive)
+    if (!profile) {
+      try {
+        const cleanTarget = cleanUsername(targetId);
+        const supabase = getSupabase();
+        const { data: allProfiles } = await supabase.from('profiles').select('*');
+        profile = (allProfiles || []).find((p: any) => cleanUsername(p.username || p.prompts?.username) === cleanTarget);
+      } catch (_) {}
     }
 
     if (!profile) {

@@ -61,8 +61,11 @@ export default function Profile() {
     }
   }, [targetId, firebaseUser]);
 
-  const isViewingSelf = !targetId || targetId === firebaseUser?.uid;
-  const displayProfile = targetProfile || profile;
+  const currentUid = firebaseUser?.uid || profile?.firebase_uid || profile?.id;
+  const targetUid = targetProfile?.firebase_uid || targetProfile?.id;
+
+  const isViewingSelf = !targetId || targetId === currentUid || (targetUid && targetUid === currentUid);
+  const displayProfile = isViewingSelf ? profile : (targetProfile || profile);
 
   const handleLikeTarget = async () => {
     if (!targetId || isViewingSelf) return;
@@ -105,35 +108,45 @@ export default function Profile() {
   }
 
   // Real user data formatting
-  const displayName = displayProfile?.display_name || displayProfile?.first_name || (isViewingSelf ? firebaseUser?.displayName : 'User Profile') || 'User Profile';
+  const displayName = displayProfile?.display_name || displayProfile?.first_name || (isViewingSelf ? firebaseUser?.displayName : 'Member Profile') || 'Member Profile';
   const age = calculateAge(displayProfile?.birthday);
   const nameHeading = age ? `${displayName}, ${age}` : displayName;
 
-  const profilePhoto = displayProfile?.photos?.[0] || (isViewingSelf ? firebaseUser?.photoURL : null) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
-  const coverMedia = displayProfile?.photos?.[1] || displayProfile?.photos?.[0] || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=1200&q=80';
-  
-  const occupation = profile?.occupation || 'Not specified';
-  const education = profile?.education || 'Not specified';
-  const locationCity = profile?.location_city || 'Location not set';
-  const bio = profile?.bio || 'No bio provided yet.';
-  const gender = profile?.gender || 'Not specified';
-  const interestedIn = profile?.interested_in?.length ? profile.interested_in.join(', ') : 'Not specified';
-  const heightText = profile?.height_cm ? `${profile.height_cm} cm` : 'Not specified';
-  const languagesText = profile?.languages?.length ? profile.languages.join(', ') : 'Not specified';
+  const validPhotos = Array.isArray(displayProfile?.photos)
+    ? displayProfile.photos.filter((url: any) => typeof url === 'string' && url.trim().length > 0 && !url.trim().startsWith('blob:'))
+    : [];
 
-  const interestsList = profile?.interests?.length ? profile.interests : ['Artificial Intelligence', 'Travel', 'Music', 'Fitness'];
-  const lifestyleList = profile?.lifestyle?.length ? profile.lifestyle : ['Early Bird', 'Active Lifestyle'];
-  const promptsMap = profile?.prompts || {};
+  const rawPhoto = validPhotos[0] || (isViewingSelf ? firebaseUser?.photoURL : null);
+  const profilePhoto = rawPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+  const hasCustomPhoto = Boolean(validPhotos.length || (isViewingSelf && firebaseUser?.photoURL));
+  const coverMedia = validPhotos[1] || validPhotos[0] || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=1200&q=80';
+  
+  const occupation = displayProfile?.occupation || 'Not specified';
+  const education = displayProfile?.education || 'Not specified';
+  const locationCity = displayProfile?.location_city || 'Location not set';
+  const bio = displayProfile?.bio || 'No bio provided yet.';
+  const gender = displayProfile?.gender || 'Not specified';
+  const interestedIn = displayProfile?.interested_in?.length ? displayProfile.interested_in.join(', ') : 'Not specified';
+  const heightText = displayProfile?.height_cm ? `${displayProfile.height_cm} cm` : 'Not specified';
+  const languagesText = displayProfile?.languages?.length ? displayProfile.languages.join(', ') : 'Not specified';
+
+  const interestsList = displayProfile?.interests?.length ? displayProfile.interests : ['Artificial Intelligence', 'Travel', 'Music', 'Fitness'];
+  const lifestyleList = displayProfile?.lifestyle?.length ? displayProfile.lifestyle : ['Early Bird', 'Active Lifestyle'];
+  const promptsMap = displayProfile?.prompts || {};
+
+  // Unique Username formatting
+  const rawUsername = displayProfile?.username || (isViewingSelf ? profile?.username : null);
+  const formattedUsername = rawUsername ? `@${rawUsername.replace(/^@+/, '')}` : null;
 
   // Story highlights derived from user photos or default highlights
-  const highlights = profile?.photos?.map((photoUrl, idx) => ({
+  const highlights = validPhotos.length ? validPhotos.map((photoUrl: string, idx: number) => ({
     id: `hl_${idx}`,
     title: idx === 0 ? 'Main' : `Highlight ${idx + 1}`,
     icon: idx === 0 ? '✨' : '📸',
     coverImage: photoUrl,
     storyMedia: photoUrl,
     caption: `${displayName}'s profile highlight #${idx + 1}`
-  })) || [
+  })) : [
     {
       id: 'hl_main',
       title: 'Main',
@@ -223,9 +236,11 @@ export default function Profile() {
                   </span>
                 </div>
 
-                <p className="text-xs sm:text-sm font-mono font-bold text-pink-400">
-                  {displayProfile?.username ? `@${displayProfile.username.replace(/^@+/, '')}` : (profile?.username ? `@${profile.username.replace(/^@+/, '')}` : '@aura_member')}
-                </p>
+                {formattedUsername && (
+                  <p className="text-xs sm:text-sm font-mono font-bold text-pink-400">
+                    {formattedUsername}
+                  </p>
+                )}
 
                 <p className="text-sm md:text-base text-pink-300 font-medium flex items-center justify-center md:justify-start gap-2">
                   <Briefcase size={16} />
@@ -269,9 +284,15 @@ export default function Profile() {
                 </button>
               </div>
             ) : (
-              <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/12 backdrop-blur-xl text-center md:text-right max-w-xs space-y-1">
-                <span className="text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider block">Interested In</span>
-                <p className="text-xs font-semibold text-white">{interestedIn}</p>
+              <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/12 backdrop-blur-xl flex flex-col items-center md:items-end gap-2">
+                <button
+                  onClick={() => navigate('/onboarding')}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 via-purple-600 to-accent text-white font-bold text-xs flex items-center gap-2 hover:opacity-90 transition-all cursor-pointer shadow-[0_0_20px_rgba(236,72,153,0.4)]"
+                >
+                  <Sparkles size={14} />
+                  Edit Profile
+                </button>
+                <span className="text-[10px] font-mono text-purple-300">Logged in as {displayName}</span>
               </div>
             )}
           </div>
@@ -290,7 +311,7 @@ export default function Profile() {
           </div>
 
           <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none snap-x">
-            {highlights.map((hl) => (
+            {highlights.map((hl: any) => (
               <motion.div
                 key={hl.id}
                 whileHover={{ scale: 1.08, y: -4 }}
@@ -366,7 +387,7 @@ export default function Profile() {
               {Object.entries(promptsMap).map(([question, answer], idx) => (
                 <div key={idx} className="p-5 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl space-y-2">
                   <span className="text-xs font-mono text-purple-400 font-bold">{question}</span>
-                  <p className="text-sm font-semibold text-white leading-relaxed">{answer}</p>
+                  <p className="text-sm font-semibold text-white leading-relaxed">{String(answer)}</p>
                 </div>
               ))}
             </div>
@@ -380,7 +401,7 @@ export default function Profile() {
           <h2 className="text-2xl font-display font-bold text-white">Interests & Lifestyle</h2>
 
           <div className="flex flex-wrap gap-2.5">
-            {interestsList.map((interest, idx) => (
+            {interestsList.map((interest: any, idx: number) => (
               <div 
                 key={idx}
                 className="px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 via-purple-600/20 to-accent/20 border border-accent/40 text-xs font-semibold text-white shadow-md flex items-center gap-1.5"
@@ -390,7 +411,7 @@ export default function Profile() {
               </div>
             ))}
 
-            {lifestyleList.map((item, idx) => (
+            {lifestyleList.map((item: any, idx: number) => (
               <div 
                 key={`life_${idx}`}
                 className="px-4 py-2 rounded-full bg-white/[0.05] border border-white/12 text-xs font-semibold text-purple-200 flex items-center gap-1.5"
@@ -405,17 +426,17 @@ export default function Profile() {
         {/* ====================================================
             SECTION 5: PHOTOS GALLERY
             ==================================================== */}
-        {profile?.photos && profile.photos.length > 0 && (
+        {validPhotos.length > 0 && (
           <section className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-display font-bold text-white">Uploaded Photos</h2>
-                <p className="text-xs text-white/50">{profile.photos.length} photos on file</p>
+                <p className="text-xs text-white/50">{validPhotos.length} photos on file</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {profile.photos.map((url, idx) => (
+              {validPhotos.map((url: string, idx: number) => (
                 <motion.div
                   key={idx}
                   whileHover={{ y: -4, scale: 1.02 }}
@@ -435,24 +456,36 @@ export default function Profile() {
       </main>
 
       {/* STICKY FLOATING QUICK ACTION BAR */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-xl w-[92%] sm:w-auto p-2.5 rounded-full bg-black/80 border border-white/20 backdrop-blur-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] flex items-center justify-center gap-2">
-        <button 
-          onClick={handleLike}
-          className={`px-5 py-2.5 rounded-full font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
-            isLiked ? 'bg-pink-600 text-white shadow-pink-600/40' : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:brightness-110'
-          }`}
-        >
-          <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
-          <span>{isLiked ? 'Favorited' : 'Favorite'}</span>
-        </button>
+      <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-xl w-[92%] sm:w-auto p-2.5 rounded-full bg-black/80 border border-white/20 backdrop-blur-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] flex items-center justify-center gap-2">
+        {isViewingSelf ? (
+          <button 
+            onClick={() => navigate('/onboarding')}
+            className="px-6 py-2.5 rounded-full bg-gradient-to-r from-pink-500 via-purple-600 to-accent text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_20px_rgba(236,72,153,0.4)] hover:brightness-110"
+          >
+            <Sparkles size={16} />
+            <span>Edit Profile</span>
+          </button>
+        ) : (
+          <>
+            <button 
+              onClick={handleLikeTarget}
+              className={`px-5 py-2.5 rounded-full font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
+                isLiked ? 'bg-pink-600 text-white shadow-pink-600/40' : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:brightness-110'
+              }`}
+            >
+              <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
+              <span>{isLiked ? 'Liked' : 'Like'}</span>
+            </button>
 
-        <button 
-          onClick={() => navigate('/settings')}
-          className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-        >
-          <Sparkles size={16} />
-          <span>Edit Profile</span>
-        </button>
+            <button 
+              onClick={() => navigate('/chat')}
+              className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <MessageCircle size={16} />
+              <span>Message</span>
+            </button>
+          </>
+        )}
       </div>
 
       {/* STORY VIEWER MODAL */}

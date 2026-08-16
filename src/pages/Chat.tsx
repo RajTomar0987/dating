@@ -476,35 +476,45 @@ export default function Chat() {
                     <ArrowLeft size={16} />
                   </button>
 
-                  <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-primary to-accent shrink-0 relative">
-                    <img src={activePhoto} alt={activeName} className="w-full h-full rounded-full object-cover border border-black" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm font-display font-extrabold text-white">{activeName}</h3>
-                      {chatType === 'real' ? (
-                        <Badge variant="accent" size="sm">Real Match</Badge>
-                      ) : (
-                        <Badge variant="accent" size="sm" className="bg-accent/20 text-accent border-accent/40 flex items-center gap-1">
-                          <Bot size={10} /> AI Companion
-                        </Badge>
-                      )}
-                      {chatType === 'real' && (
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold ${
-                          connectionStatus === 'connected'
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
-                        }`}>
-                          {connectionStatus === 'connected' ? '● Connected' : '◐ Reconnecting...'}
-                        </span>
-                      )}
+                  <div 
+                    onClick={() => {
+                      if (chatType === 'real' && activeRealMatch?.partnerId) {
+                        navigate(`/profile/${activeRealMatch.partnerId}`);
+                      }
+                    }}
+                    className={`flex items-center gap-3 ${chatType === 'real' ? 'cursor-pointer hover:opacity-90' : ''}`}
+                    title={chatType === 'real' ? `View ${activeName}'s Profile` : activeName}
+                  >
+                    <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-primary to-accent shrink-0 relative">
+                      <img src={activePhoto} alt={activeName} className="w-full h-full rounded-full object-cover border border-black" />
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] font-mono text-emerald-400">
-                      <span>{activeStatus}</span>
-                      <span>•</span>
-                      <span className="text-amber-400 flex items-center gap-0.5">
-                        <Flame size={11} className="fill-amber-400" /> High Affinity
-                      </span>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-sm font-display font-extrabold text-white hover:text-pink-400 transition-colors">{activeName}</h3>
+                        {chatType === 'real' ? (
+                          <Badge variant="accent" size="sm">Real Match</Badge>
+                        ) : (
+                          <Badge variant="accent" size="sm" className="bg-accent/20 text-accent border-accent/40 flex items-center gap-1">
+                            <Bot size={10} /> AI Companion
+                          </Badge>
+                        )}
+                        {chatType === 'real' && (
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold ${
+                            connectionStatus === 'connected'
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
+                          }`}>
+                            {connectionStatus === 'connected' ? '● Connected' : '◐ Reconnecting...'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] font-mono text-emerald-400">
+                        <span>{activeStatus}</span>
+                        <span>•</span>
+                        <span className="text-amber-400 flex items-center gap-0.5">
+                          <Flame size={11} className="fill-amber-400" /> High Affinity
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
