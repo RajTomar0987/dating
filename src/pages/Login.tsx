@@ -12,7 +12,7 @@ type AuthMethod = 'email' | 'phone';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { loginWithEmail, loginWithGoogle, loginWithPhone, verifyPhoneOTP, error, clearError } = useAuth();
+  const { loginWithEmail, loginWithCustomToken, loginWithGoogle, loginWithPhone, verifyPhoneOTP, error, clearError } = useAuth();
   const [authMethod, setAuthMethod] = useState<AuthMethod>('email');
 
   const handleEmailLogin = async (email: string, password: string) => {
@@ -129,7 +129,7 @@ export default function Login() {
                 exit={{ opacity: 0, x: 10 }}
                 transition={{ duration: 0.2 }}
               >
-                <EmailLogin mode="login" onSubmit={handleEmailLogin} error={error} />
+                <EmailLogin mode="login" onSubmit={handleEmailLogin} onCustomTokenLogin={loginWithCustomToken} error={error} />
               </motion.div>
             ) : (
               <motion.div
