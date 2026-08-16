@@ -149,7 +149,11 @@ export const ApiClient = {
   },
 
   // Supabase Realtime Subscription for Real User Chat
-  subscribeToRealtimeChat(matchId: string, onMessage: (msg: any) => void) {
+  subscribeToRealtimeChat(
+    matchId: string, 
+    onMessage: (msg: any) => void,
+    onStatus?: (status: 'connected' | 'reconnecting') => void
+  ) {
     const channel = supabase.channel(`realtime_match_${matchId}`);
 
     channel
@@ -163,7 +167,13 @@ export const ApiClient = {
           onMessage(payload.payload);
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          if (onStatus) onStatus('connected');
+        } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+          if (onStatus) onStatus('reconnecting');
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);

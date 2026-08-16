@@ -5,7 +5,7 @@ import {
   Send, Mic, Image, CheckCheck, Compass, MessageCircle, Sparkles, Play, Search, 
   Pin, ShieldCheck, FileText, X, Bot, Phone, Video, Flame, Zap, Volume2, Heart, 
   Smile, Activity, Award, TrendingUp, BarChart2, Filter, Sparkle, ArrowUpRight,
-  Users, UserCheck, Cpu, RefreshCw
+  Users, UserCheck, Cpu, RefreshCw, ArrowLeft
 } from 'lucide-react';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, 
@@ -72,6 +72,7 @@ export default function Chat() {
   const [showAiDrawer, setShowAiDrawer] = useState(false);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'reconnecting'>('connected');
 
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -139,25 +140,31 @@ export default function Chat() {
       });
 
       // Subscribe to Supabase Realtime for instant user-to-user updates
-      const unsubscribe = ApiClient.subscribeToRealtimeChat(selectedId, (newMsg: any) => {
-        if (!isMounted) return;
-        setMessages(prev => {
-          if (prev.some(m => m.id === newMsg.id)) return prev;
-          const formatted = {
-            id: newMsg.id,
-            matchId: newMsg.match_id || selectedId,
-            senderId: newMsg.sender_id,
-            sender: newMsg.sender_id === firebaseUser?.uid ? 'user' : 'match',
-            text: newMsg.content || newMsg.text,
-            timestamp: new Date(newMsg.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            type: newMsg.message_type || 'text',
-            duration: newMsg.duration,
-            imageUrl: newMsg.image_url,
-            isRead: newMsg.is_read || false
-          };
-          return [...prev, formatted];
-        });
-      });
+      const unsubscribe = ApiClient.subscribeToRealtimeChat(
+        selectedId, 
+        (newMsg: any) => {
+          if (!isMounted) return;
+          setMessages(prev => {
+            if (prev.some(m => m.id === newMsg.id)) return prev;
+            const formatted = {
+              id: newMsg.id,
+              matchId: newMsg.match_id || selectedId,
+              senderId: newMsg.sender_id,
+              sender: newMsg.sender_id === firebaseUser?.uid ? 'user' : 'match',
+              text: newMsg.content || newMsg.text,
+              timestamp: new Date(newMsg.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              type: newMsg.message_type || 'text',
+              duration: newMsg.duration,
+              imageUrl: newMsg.image_url,
+              isRead: newMsg.is_read || false
+            };
+            return [...prev, formatted];
+          });
+        },
+        (status) => {
+          if (isMounted) setConnectionStatus(status);
+        }
+      );
 
       return () => {
         unsubscribe();
@@ -433,7 +440,7 @@ export default function Chat() {
         </div>
 
         {/* CENTER COLUMN: MESSAGE TIMELINE & INTERACTIVE CHAT */}
-        <div className={`col-span-12 md:col-span-6 flex flex-col h-full rounded-3xl bg-white/[0.02] border border-white/10 overflow-hidden relative ${mobileTab === 'list' ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`col-span-12 md:col-span-9 lg:col-span-6 flex flex-col h-full rounded-3xl bg-white/[0.02] border border-white/10 overflow-hidden relative ${mobileTab === 'list' ? 'hidden md:flex' : 'flex'}`}>
           
           {chatType === 'real' && realMatches.length === 0 ? (
             /* Clean Empty State when user has 0 real matches */
@@ -459,11 +466,21 @@ export default function Chat() {
               {/* Top Header */}
               <div className="p-4 border-b border-white/8 bg-black/40 backdrop-blur-xl flex items-center justify-between shrink-0 z-20">
                 <div className="flex items-center gap-3">
+                  {/* Mobile Back Button (< md) */}
+                  <button
+                    type="button"
+                    onClick={() => setMobileTab('list')}
+                    className="md:hidden p-2 rounded-xl bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer shrink-0"
+                    title="Back to Conversations"
+                  >
+                    <ArrowLeft size={16} />
+                  </button>
+
                   <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-primary to-accent shrink-0 relative">
                     <img src={activePhoto} alt={activeName} className="w-full h-full rounded-full object-cover border border-black" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-sm font-display font-extrabold text-white">{activeName}</h3>
                       {chatType === 'real' ? (
                         <Badge variant="accent" size="sm">Real Match</Badge>
@@ -471,6 +488,15 @@ export default function Chat() {
                         <Badge variant="accent" size="sm" className="bg-accent/20 text-accent border-accent/40 flex items-center gap-1">
                           <Bot size={10} /> AI Companion
                         </Badge>
+                      )}
+                      {chatType === 'real' && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold ${
+                          connectionStatus === 'connected'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
+                        }`}>
+                          {connectionStatus === 'connected' ? '● Connected' : '◐ Reconnecting...'}
+                        </span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 text-[10px] font-mono text-emerald-400">
@@ -638,7 +664,7 @@ export default function Chat() {
         </div>
 
         {/* RIGHT COLUMN: AI RELATIONSHIP TELEMETRY PANEL */}
-        <div className="col-span-12 md:col-span-3 hidden md:flex flex-col gap-4 h-full overflow-y-auto pr-1">
+        <div className="col-span-12 lg:col-span-3 hidden lg:flex flex-col gap-4 h-full overflow-y-auto pr-1">
           
           {/* Emotion Donut Wheel */}
           <GlassCard className="p-4 space-y-3 border-white/10">
