@@ -156,10 +156,11 @@ export async function createOrUpdateProfile(firebaseUid: string, profileData: Pr
 
   if (!finalUsername || !validateUsernameFormat(finalUsername).valid) {
     const existing = await getProfileByFirebaseUid(firebaseUid).catch(() => null);
-    if (existing && existing.username) {
+    if (existing && existing.username && !existing.username.includes('msvu')) {
       finalUsername = cleanUsername(existing.username);
     } else {
-      finalUsername = await generateUniqueUsername(profileData.first_name || profileData.display_name, firebaseUid);
+      const nameInput = profileData.first_name || profileData.display_name || existing?.first_name || existing?.display_name || 'user';
+      finalUsername = await generateUniqueUsername(nameInput, firebaseUid);
     }
   }
 
@@ -167,6 +168,10 @@ export async function createOrUpdateProfile(firebaseUid: string, profileData: Pr
     firebase_uid: firebaseUid,
     ...normalized,
     username: finalUsername,
+    prompts: {
+      ...(normalized.prompts || {}),
+      username: finalUsername,
+    },
   };
 
   const supabase = getSupabase();
