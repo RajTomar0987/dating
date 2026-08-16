@@ -129,7 +129,7 @@ export default function Login() {
                 exit={{ opacity: 0, x: 10 }}
                 transition={{ duration: 0.2 }}
               >
-                <EmailLogin mode="login" onSubmit={handleEmailLogin} onCustomTokenLogin={loginWithCustomToken} error={error} />
+                <EmailLogin mode="login" onSubmit={handleEmailLogin} error={error} />
               </motion.div>
             ) : (
               <motion.div
