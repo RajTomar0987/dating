@@ -1,8 +1,10 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { firebaseAuth } from '../services/firebase.js';
 import { getProfileByFirebaseUid } from '../services/profileStore.js';
 import { authenticateJWT, type AuthenticatedRequest } from '../middleware/auth.js';
+import { generateAndStoreOtp, verifyOtpCode } from '../services/otpStore.js';
 
 const router = Router();
 
@@ -134,6 +136,115 @@ router.get('/me', authenticateJWT, async (req: AuthenticatedRequest, res: Respon
   } catch (err: any) {
     console.error('[AUTH] GET /me error:', err);
     res.status(500).json({ error: 'PROFILE_LOAD_FAILED', details: err?.message || String(err) });
+  }
+});
+
+/**
+ * POST /api/auth/otp/send
+ * Request a 6-digit OTP sent to user email
+ */
+router.post('/otp/send', async (req: Request, res: Response): Promise<void> => {
+  const { email } = req.body || {};
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    res.status(400).json({ error: 'Enter a valid email address.' });
+    return;
+  }
+
+  try {
+    const { otp, resendCooldownSeconds } = generateAndStoreOtp(email);
+    console.log(`[AUTH OTP] Sent 6-digit code ${otp} to ${email}`);
+    res.status(200).json({
+      message: 'Verification code sent to your email.',
+      resendCooldownSeconds,
+    });
+  } catch (err: any) {
+    console.warn('[AUTH OTP] Send error:', err?.message || err);
+    res.status(429).json({ error: err?.message || 'Too many attempts. Please try again later.' });
+  }
+});
+
+/**
+ * POST /api/auth/otp/verify
+ * Verify 6-digit OTP and issue Firebase custom token
+ */
+router.post('/otp/verify', async (req: Request, res: Response): Promise<void> => {
+  const { email, otp, name } = req.body || {};
+  if (!email || !otp) {
+    res.status(400).json({ error: 'Email and verification code are required.' });
+    return;
+  }
+
+  const result = verifyOtpCode(email, otp);
+  if (!result.success) {
+    res.status(400).json({ error: result.error || 'Incorrect verification code.' });
+    return;
+  }
+
+  try {
+    const normalizedEmail = email.trim().toLowerCase();
+    let uid = `otp_${crypto.createHash('md5').update(normalizedEmail).digest('hex')}`;
+    let customToken: string | null = null;
+    let fbUser: any = null;
+
+    try {
+      try {
+        fbUser = await firebaseAuth.getUserByEmail(normalizedEmail);
+        if (fbUser?.uid) uid = fbUser.uid;
+        console.log('[AUTH OTP] Existing Firebase user found:', uid);
+      } catch (err: any) {
+        if (err.code === 'auth/user-not-found' || err?.message?.includes('user-not-found')) {
+          console.log('[AUTH OTP] Creating new Firebase user for:', normalizedEmail);
+          fbUser = await firebaseAuth.createUser({
+            email: normalizedEmail,
+            displayName: name || normalizedEmail.split('@')[0],
+            emailVerified: true,
+          });
+          if (fbUser?.uid) uid = fbUser.uid;
+          console.log('[AUTH OTP] Created new Firebase user with UID:', uid);
+        }
+      }
+
+      if (uid) {
+        try {
+          customToken = await firebaseAuth.createCustomToken(uid);
+          console.log('[AUTH OTP] Issued Firebase customToken for UID:', uid);
+        } catch (tokenErr: any) {
+          console.warn('[AUTH OTP] Firebase createCustomToken notice (falling back to direct session):', tokenErr?.message || tokenErr);
+        }
+      }
+    } catch (adminErr: any) {
+      console.warn('[AUTH OTP] Firebase Admin operation notice:', adminErr?.message || adminErr);
+    }
+
+    // Look up existing profile or prepare new profile registration
+    let profile = null;
+    try {
+      profile = await getProfileByFirebaseUid(uid);
+    } catch (e: any) {
+      console.warn('[AUTH OTP] Profile lookup notice during OTP verify:', e?.message || e);
+    }
+
+    // Issue backend JWT token
+    const token = jwt.sign(
+      {
+        id: profile?.id || uid,
+        firebase_uid: uid,
+        email: normalizedEmail,
+      },
+      getJwtSecret(),
+      { expiresIn: '7d' }
+    );
+
+    res.status(200).json({
+      message: 'OTP verified successfully.',
+      customToken,
+      token,
+      uid,
+      profile,
+    });
+  } catch (err: any) {
+    console.error('[AUTH OTP] Verify exception:', err);
+    res.status(500).json({ error: 'Unable to complete registration. Please try again.' });
   }
 });
 

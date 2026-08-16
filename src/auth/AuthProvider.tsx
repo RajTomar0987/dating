@@ -5,6 +5,7 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signInWithCustomToken,
   signInWithPhoneNumber,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -238,6 +239,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const loginWithCustomToken = useCallback(async (customToken: string) => {
+    try {
+      setError(null);
+      await signInWithCustomToken(auth, customToken);
+    } catch (err: any) {
+      const message = getFirebaseErrorMessage(err.code);
+      setError(message);
+      throw new Error(message);
+    }
+  }, []);
+
   const loginWithGoogle = useCallback(async () => {
     try {
       setError(null);
@@ -314,6 +326,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error,
     loginWithEmail,
     signupWithEmail,
+    loginWithCustomToken,
     loginWithGoogle,
     loginWithPhone,
     verifyPhoneOTP,
@@ -323,7 +336,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearError,
   }), [
     firebaseUser, profile, jwt, status, isFullySettled, profileLoading, error,
-    loginWithEmail, signupWithEmail, loginWithGoogle, loginWithPhone, verifyPhoneOTP,
+    loginWithEmail, signupWithEmail, loginWithCustomToken, loginWithGoogle, loginWithPhone, verifyPhoneOTP,
     logout, refreshProfile, handleSetProfile, clearError,
   ]);
 

@@ -4,6 +4,7 @@ import type { User } from 'firebase/auth';
 export interface UserProfile {
   id: string;
   firebase_uid: string;
+  username?: string | null;
   email: string | null;
   phone: string | null;
   auth_provider: string;
@@ -43,6 +44,7 @@ export interface AuthContextType {
   // Actions
   loginWithEmail: (email: string, password: string) => Promise<void>;
   signupWithEmail: (email: string, password: string) => Promise<void>;
+  loginWithCustomToken: (customToken: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   loginWithPhone: (phoneNumber: string, recaptchaVerifier: any) => Promise<any>;
   verifyPhoneOTP: (confirmationResult: any, otp: string) => Promise<void>;

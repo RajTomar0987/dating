@@ -1,6 +1,8 @@
 import { getSupabase } from './supabase.js';
+import { cleanUsername, generateUniqueUsername, validateUsernameFormat } from './usernameStore.js';
 
 export interface ProfileData {
+  username?: string;
   first_name?: string;
   display_name?: string;
   birthday?: string | null;
@@ -44,7 +46,7 @@ function logProfileDebug(metrics: {
 /**
  * Sanitize and normalize profile payload for PostgreSQL compatibility.
  */
-function normalizeProfileData(data: ProfileData): Record<string, any> {
+export function normalizeProfileData(data: ProfileData): Record<string, any> {
   const cleanData: Record<string, any> = { ...data };
 
   // Birthday sanitization (ensure valid YYYY-MM-DD or null for Postgres DATE)
@@ -117,6 +119,10 @@ export async function getProfileByFirebaseUid(firebaseUid: string): Promise<any 
     throw new Error(`DATABASE_QUERY_ERROR: ${error.message || JSON.stringify(error)}`);
   }
 
+  if (data && !data.username && data.prompts?.username) {
+    data.username = data.prompts.username;
+  }
+
   logProfileDebug({
     firebaseUidExists: true,
     firebaseUidLength: firebaseUid.length,
@@ -146,16 +152,40 @@ export async function createOrUpdateProfile(firebaseUid: string, profileData: Pr
   });
 
   const normalized = normalizeProfileData(profileData);
+  let finalUsername = cleanUsername(profileData.username);
+
+  if (!finalUsername || !validateUsernameFormat(finalUsername).valid) {
+    const existing = await getProfileByFirebaseUid(firebaseUid).catch(() => null);
+    if (existing && existing.username) {
+      finalUsername = cleanUsername(existing.username);
+    } else {
+      finalUsername = await generateUniqueUsername(profileData.first_name || profileData.display_name, firebaseUid);
+    }
+  }
+
   const payload = {
     firebase_uid: firebaseUid,
     ...normalized,
+    username: finalUsername,
   };
 
   const supabase = getSupabase();
 
-  const { error: upsertError } = await supabase
+  let { error: upsertError } = await supabase
     .from('profiles')
     .upsert(payload, { onConflict: 'firebase_uid' });
+
+  if (upsertError && (upsertError.message?.includes("'username' column") || upsertError.message?.includes("column \"username\""))) {
+    console.warn('[profileStore] Supabase schema cache notice for username column. Storing in metadata...');
+    const fallbackPayload: Record<string, any> = { ...payload };
+    delete fallbackPayload.username;
+    fallbackPayload.prompts = {
+      ...(fallbackPayload.prompts || {}),
+      username: finalUsername,
+    };
+    const retry = await supabase.from('profiles').upsert(fallbackPayload, { onConflict: 'firebase_uid' });
+    upsertError = retry.error;
+  }
 
   if (upsertError) {
     console.error('[profileStore] createOrUpdateProfile Supabase write error:', upsertError.message || upsertError);
@@ -172,6 +202,10 @@ export async function createOrUpdateProfile(firebaseUid: string, profileData: Pr
   if (verifyError || !verifiedProfile) {
     console.error('[profileStore] Persistence verification failed:', verifyError?.message || 'Row not found after upsert');
     throw new Error(`PERSISTENCE_VERIFICATION_FAILED: ${verifyError?.message || 'Row not found after upsert'}`);
+  }
+
+  if (!verifiedProfile.username && verifiedProfile.prompts?.username) {
+    verifiedProfile.username = verifiedProfile.prompts.username;
   }
 
   logProfileDebug({

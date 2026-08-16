@@ -2,11 +2,13 @@ import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { getSupabase } from '../services/supabase.js';
 import { getProfileByFirebaseUid, createOrUpdateProfile } from '../services/profileStore.js';
+import { cleanUsername, validateUsernameFormat, checkUsernameAvailable, generateUniqueUsername } from '../services/usernameStore.js';
 import { z } from 'zod';
 
 const router = Router();
 
 const ProfileCompleteSchema = z.object({
+  username: z.string().optional(),
   first_name: z.string().optional().default(''),
   display_name: z.string().optional().default(''),
   birthday: z.string().optional().default(''),
@@ -28,6 +30,7 @@ const ProfileCompleteSchema = z.object({
 });
 
 const ProfileUpdateSchema = z.object({
+  username: z.string().optional(),
   display_name: z.string().optional(),
   first_name: z.string().optional(),
   birthday: z.string().optional(),
@@ -77,6 +80,34 @@ function isTestOrDemoProfile(p: any): boolean {
 
   return false;
 }
+
+/**
+ * GET /api/profiles/check-username?q=...
+ * Check if a username is available (case-insensitive)
+ */
+router.get('/check-username', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const currentUid = req.user?.firebase_uid || req.user?.id;
+  const rawQ = req.query.q || req.query.username;
+  const candidate = cleanUsername(Array.isArray(rawQ) ? String(rawQ[0]) : String(rawQ || ''));
+
+  if (!candidate) {
+    res.status(400).json({ available: false, reason: 'Username cannot be empty.' });
+    return;
+  }
+
+  const formatCheck = validateUsernameFormat(candidate);
+  if (!formatCheck.valid) {
+    res.status(400).json({ available: false, reason: formatCheck.reason || 'Invalid username format.' });
+    return;
+  }
+
+  const isAvailable = await checkUsernameAvailable(candidate, currentUid);
+  res.status(200).json({
+    available: isAvailable,
+    username: candidate,
+    display: `@${candidate}`,
+  });
+});
 
 /**
  * GET /api/profiles/discover
@@ -172,7 +203,7 @@ router.get('/me', async (req: AuthenticatedRequest, res: Response): Promise<void
 
 /**
  * GET /api/profiles/search?q=<query>
- * User search across profiles
+ * Real person search across registered database profiles
  */
 router.get('/search', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -184,43 +215,95 @@ router.get('/search', async (req: AuthenticatedRequest, res: Response): Promise<
 
     const rawQ = req.query.q;
     const queryStr = (Array.isArray(rawQ) ? String(rawQ[0]) : String(rawQ || '')).trim().toLowerCase();
-    if (!queryStr || queryStr.length < 2) {
+    if (!queryStr) {
       res.status(200).json({ profiles: [] });
       return;
     }
 
+    // Strip leading @ for username searches
+    const cleanQ = queryStr.replace(/^@+/, '').trim();
+
     const supabase = getSupabase();
+    // Query database profiles excluding current user
     const { data: dbMatches, error } = await supabase
       .from('profiles')
       .select('*')
       .neq('firebase_uid', currentUid)
-      .or(`display_name.ilike.%${queryStr}%,first_name.ilike.%${queryStr}%,location_city.ilike.%${queryStr}%,occupation.ilike.%${queryStr}%,education.ilike.%${queryStr}%,bio.ilike.%${queryStr}%`)
-      .limit(10);
+      .limit(50);
 
     if (error) {
       console.warn('[Profiles/Search] Supabase query notice:', error.message);
     }
 
-    const realMatches = (dbMatches || []).filter((p: any) => !isTestOrDemoProfile(p) && p.profile_completed !== false);
+    // Filter real profiles and match across username, display_name, first_name, location, occupation, education, bio, or interests
+    const realMatches = (dbMatches || []).filter((p: any) => {
+      if (isTestOrDemoProfile(p) || p.profile_completed === false) return false;
 
+      const username = String(p.username || p.prompts?.username || '').toLowerCase();
+      const name = String(p.display_name || p.first_name || '').toLowerCase();
+      const location = String(p.location_city || '').toLowerCase();
+      const occupation = String(p.occupation || '').toLowerCase();
+      const education = String(p.education || '').toLowerCase();
+      const bio = String(p.bio || '').toLowerCase();
+      const interests = Array.isArray(p.interests) ? p.interests.map((i: any) => String(i).toLowerCase()) : [];
+
+      return (
+        username === cleanQ ||
+        username.includes(cleanQ) ||
+        name.includes(cleanQ) ||
+        location.includes(cleanQ) ||
+        occupation.includes(cleanQ) ||
+        education.includes(cleanQ) ||
+        bio.includes(cleanQ) ||
+        interests.some((i: string) => i.includes(cleanQ))
+      );
+    });
+
+    // Prioritize exact username match first
+    realMatches.sort((a: any, b: any) => {
+      const uA = String(a.username || a.prompts?.username || '').toLowerCase();
+      const uB = String(b.username || b.prompts?.username || '').toLowerCase();
+      if (uA === cleanQ && uB !== cleanQ) return -1;
+      if (uB === cleanQ && uA !== cleanQ) return 1;
+      return 0;
+    });
+
+    // Return sanitized public profile objects (OMIT private auth data like firebase_uid & email)
     const results = realMatches.map((p: any) => {
       const validPhotos = Array.isArray(p.photos)
         ? p.photos.filter((url: any) => typeof url === 'string' && url.trim().length > 0 && !url.trim().startsWith('blob:'))
         : [];
 
+      const mainImage = validPhotos.length ? validPhotos[0] : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+      const resolvedUser = cleanUsername(p.username || p.prompts?.username || 'aura_member');
+      const userHandle = `@${resolvedUser}`;
+
       return {
         id: p.id || p.firebase_uid,
-        firebase_uid: p.firebase_uid || p.id,
+        username: resolvedUser,
+        userHandle,
+        type: 'profile',
+        category: 'profile',
+        name: p.display_name || p.first_name || 'Member',
         display_name: p.display_name || p.first_name || 'Member',
         first_name: p.first_name || p.display_name || 'Member',
+        age: calculateAge(p.birthday) || 24,
         birthday: p.birthday || null,
         gender: p.gender || null,
-        location_city: p.location_city || 'Nearby',
         occupation: p.occupation || 'Member',
+        location: p.location_city || 'Nearby',
+        distance: p.location_city || 'Nearby',
         education: p.education || '',
-        interests: p.interests || [],
-        bio: p.bio || '',
-        photos: validPhotos.length ? validPhotos : ['https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'],
+        interests: p.interests || ['Travel', 'Music'],
+        introText: p.bio || 'Hello! Looking for meaningful connections.',
+        bio: p.bio || 'Hello! Looking for meaningful connections.',
+        image: mainImage,
+        images: validPhotos.length ? validPhotos : [mainImage],
+        compatibility: 94,
+        compatibilityScore: 94,
+        verified: true,
+        hasVoiceIntro: false,
+        voiceDuration: '0:15',
         profile_completed: true,
       };
     });

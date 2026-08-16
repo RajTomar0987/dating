@@ -25,6 +25,7 @@ import plannerRoute from './routes/planner.js';
 import notificationsRoute from './routes/notifications.js';
 import { authenticateJWT } from './middleware/auth.js';
 import { seedTestAccounts } from './seedTestAccounts.js';
+import { ensureUsernameSchemaAndMigrateExistingUsers } from './services/usernameStore.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -75,4 +76,5 @@ app.listen(PORT, () => {
   console.log(`⚡ AuraAI Express REST API running on port ${PORT}`);
   console.log(`🩺 Health check available at http://localhost:${PORT}/api/health`);
   seedTestAccounts();
+  ensureUsernameSchemaAndMigrateExistingUsers().catch(() => {});
 });

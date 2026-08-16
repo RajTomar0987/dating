@@ -138,42 +138,59 @@ export default function SwipeDeck() {
     }
   };
 
-  // Combine real database profiles with static feed items
-  const combinedFeed = [...realProfilesFeed, ...DISCOVER_FEED];
+  const [dbSearchResults, setDbSearchResults] = useState<any[] | null>(null);
+  const [isSearchingDb, setIsSearchingDb] = useState(false);
 
-  // Filter feed by search query & category
-  const filteredFeed = combinedFeed.filter(item => {
-    const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
-    if (!searchQuery.trim()) return matchesCategory;
+  // Search real registered profiles from Supabase database when user types in search bar
+  useEffect(() => {
+    let isMounted = true;
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      setDbSearchResults(null);
+      setIsSearchingDb(false);
+      return;
+    }
 
-    const query = searchQuery.toLowerCase();
-    if (item.type === 'profile') {
-      return matchesCategory && (
-        item.name.toLowerCase().includes(query) ||
-        item.occupation.toLowerCase().includes(query) ||
-        item.interests.some((i: string) => i.toLowerCase().includes(query))
-      );
-    }
-    if (item.type === 'reel') {
-      return matchesCategory && (
-        item.creatorName.toLowerCase().includes(query) ||
-        item.caption.toLowerCase().includes(query)
-      );
-    }
-    if (item.type === 'experience') {
-      return matchesCategory && (
-        item.title.toLowerCase().includes(query) ||
-        item.categoryName.toLowerCase().includes(query)
-      );
-    }
-    if (item.type === 'community') {
-      return matchesCategory && (
-        item.name.toLowerCase().includes(query) ||
-        item.recentDiscussion.toLowerCase().includes(query)
-      );
-    }
-    return matchesCategory;
-  });
+    setIsSearchingDb(true);
+    const timer = setTimeout(() => {
+      ApiClient.searchProfiles(trimmed).then(res => {
+        if (!isMounted) return;
+        if (res?.profiles) {
+          const formatted = res.profiles.map((p: any) => ({
+            id: p.id || p.firebase_uid,
+            type: 'profile' as const,
+            category: 'profile',
+            name: p.name || p.display_name || p.first_name || 'Member',
+            age: p.age || 24,
+            occupation: p.occupation || 'Member',
+            distance: p.location || p.distance || 'Nearby',
+            image: p.image || p.images?.[0] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+            compatibility: p.compatibility || p.compatibilityScore || 94,
+            verified: true,
+            hasVoiceIntro: false,
+            voiceDuration: '0:15',
+            introText: p.introText || p.bio || 'Hello! Looking for meaningful connections.',
+            interests: p.interests || ['Travel', 'Music']
+          }));
+          setDbSearchResults(formatted);
+        } else {
+          setDbSearchResults([]);
+        }
+        setIsSearchingDb(false);
+      });
+    }, 200);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [searchQuery]);
+
+  // Combine real database profiles with static feed items when not searching
+  // When active search query exists: return DB search results ONLY (no static mock cards)
+  const filteredFeed = searchQuery.trim()
+    ? (dbSearchResults || []).filter(item => activeCategory === 'all' || item.category === activeCategory)
+    : [...realProfilesFeed, ...DISCOVER_FEED].filter(item => activeCategory === 'all' || item.category === activeCategory);
 
   // Voice Search Simulation
   const toggleVoiceSearch = () => {
@@ -369,8 +386,31 @@ export default function SwipeDeck() {
             <span className="text-xs font-mono text-white/40">Showing {filteredFeed.length} items</span>
           </div>
 
-          <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
-            {filteredFeed.map((item, index) => {
+          {filteredFeed.length === 0 ? (
+            <div className="p-12 text-center rounded-3xl bg-white/[0.02] border border-white/8 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-pink-500/10 border border-pink-500/20 flex items-center justify-center mx-auto text-pink-400">
+                <Users size={32} />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-white">No people found</h3>
+                <p className="text-xs text-white/60 max-w-sm mx-auto leading-relaxed">
+                  {searchQuery.trim() 
+                    ? `No registered members found matching "${searchQuery}". Try searching by name, interest, occupation, or location.`
+                    : 'No items found matching the selected category filter.'}
+                </p>
+              </div>
+              {searchQuery.trim() && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-colors cursor-pointer"
+                >
+                  Clear Search
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
+              {filteredFeed.map((item, index) => {
               
               // ----------------------------------------------
               // ITEM TYPE 1: PROFILE CARD
@@ -415,6 +455,9 @@ export default function SwipeDeck() {
                         {/* Bottom Name & Location Overlay */}
                         <div className="absolute bottom-3 left-3 right-3">
                           <h3 className="text-xl font-bold font-display text-white">{item.name}, {item.age}</h3>
+                          {item.userHandle && (
+                            <p className="text-xs font-mono font-bold text-pink-400">{item.userHandle}</p>
+                          )}
                           <p className="text-xs text-white/70 truncate">{item.occupation}</p>
                           <p className="text-[10px] text-white/40 mt-0.5">{item.distance}</p>
                         </div>
@@ -675,6 +718,7 @@ export default function SwipeDeck() {
               return null;
             })}
           </div>
+        )}
         </section>
 
         {/* ====================================================

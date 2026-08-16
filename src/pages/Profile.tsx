@@ -223,6 +223,10 @@ export default function Profile() {
                   </span>
                 </div>
 
+                <p className="text-xs sm:text-sm font-mono font-bold text-pink-400">
+                  {displayProfile?.username ? `@${displayProfile.username.replace(/^@+/, '')}` : (profile?.username ? `@${profile.username.replace(/^@+/, '')}` : '@aura_member')}
+                </p>
+
                 <p className="text-sm md:text-base text-pink-300 font-medium flex items-center justify-center md:justify-start gap-2">
                   <Briefcase size={16} />
                   {occupation}
