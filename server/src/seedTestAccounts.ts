@@ -4,8 +4,7 @@ import path from 'path';
 dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 dotenv.config();
 
-import { getSupabase } from './services/supabase.js';
-import { inMemoryProfiles } from './services/profileStore.js';
+import { createOrUpdateProfile } from './services/profileStore.js';
 
 export const TEST_USER_A = {
   id: 'test_user_a_uid',
@@ -56,14 +55,11 @@ export const TEST_USER_B = {
 };
 
 export async function seedTestAccounts() {
-  inMemoryProfiles.set(TEST_USER_A.firebase_uid, TEST_USER_A);
-  inMemoryProfiles.set(TEST_USER_B.firebase_uid, TEST_USER_B);
-
   try {
-    const supabase = getSupabase();
-    await supabase.from('profiles').upsert([TEST_USER_A, TEST_USER_B], { onConflict: 'firebase_uid' });
-    console.log('✅ Test User A and Test User B seeded into Supabase & Memory Store successfully!');
+    await createOrUpdateProfile(TEST_USER_A.firebase_uid, TEST_USER_A);
+    await createOrUpdateProfile(TEST_USER_B.firebase_uid, TEST_USER_B);
+    console.log('✅ Test User A and Test User B seeded into Supabase successfully!');
   } catch (err) {
-    console.warn('⚠️ Seed warning (using fallback memory store):', err);
+    console.warn('⚠️ Seed warning:', err);
   }
 }

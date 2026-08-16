@@ -60,6 +60,19 @@ export function getSupabase() {
     console.log('[SUPABASE DIAGNOSTICS] Supabase key role:', role);
     console.log('[SUPABASE DIAGNOSTICS] Supabase key length:', key.length);
 
+    // Additional safe diagnostics requested for production troubleshooting
+    const serviceRoleConfigured = Boolean(serviceRoleKey && serviceRoleKey.trim().length > 0);
+    console.log('[SUPABASE] URL configured:', Boolean(cleanUrl));
+    console.log('[SUPABASE] Service role key configured:', serviceRoleConfigured);
+    try {
+      const parsed = new URL(cleanUrl);
+      console.log('[SUPABASE] Project/reference:', parsed.hostname);
+    } catch (e) {
+      // Fallback: print a safe identifier (host without path)
+      const hostLike = String(cleanUrl).replace(/^https?:\/\//, '').replace(/\/.*/, '');
+      console.log('[SUPABASE] Project/reference:', hostLike);
+    }
+
     if (role === 'service_role') {
       console.log('✅ [SUPABASE] Using service_role key — RLS bypassed (correct for backend)');
     } else {

@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { getSupabase } from '../services/supabase.js';
-import { inMemoryProfiles } from '../services/profileStore.js';
+import { getProfileByFirebaseUid } from '../services/profileStore.js';
 import { 
   createOrGetMatch, 
   getUserMatches, 
@@ -81,17 +81,8 @@ router.get('/matches', async (req: AuthenticatedRequest, res: Response): Promise
         // Fetch partner profile
         let partnerProfile: any = null;
         try {
-          const { data } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('firebase_uid', partnerId)
-            .maybeSingle();
-          partnerProfile = data;
+          partnerProfile = await getProfileByFirebaseUid(partnerId);
         } catch (_) {}
-
-        if (!partnerProfile) {
-          partnerProfile = inMemoryProfiles.get(partnerId) || null;
-        }
 
         // Online status calculation (active within last 5 minutes)
         let isOnline = false;
