@@ -5,6 +5,7 @@ import { firebaseAuth } from '../services/firebase.js';
 import { getProfileByFirebaseUid } from '../services/profileStore.js';
 import { authenticateJWT, type AuthenticatedRequest } from '../middleware/auth.js';
 import { generateAndStoreOtp, verifyOtpCode } from '../services/otpStore.js';
+import { sendEmailOtp } from '../services/emailService.js';
 
 const router = Router();
 
@@ -141,7 +142,7 @@ router.get('/me', authenticateJWT, async (req: AuthenticatedRequest, res: Respon
 
 /**
  * POST /api/auth/otp/send
- * Request a 6-digit OTP sent to user email
+ * Request a 6-digit OTP sent to user email via transactional provider
  */
 router.post('/otp/send', async (req: Request, res: Response): Promise<void> => {
   const { email } = req.body || {};
@@ -152,10 +153,23 @@ router.post('/otp/send', async (req: Request, res: Response): Promise<void> => {
 
   try {
     const { otp, resendCooldownSeconds } = generateAndStoreOtp(email);
-    console.log(`[AUTH OTP] Sent 6-digit code ${otp} to ${email}`);
+    const emailResult = await sendEmailOtp(email, otp);
+
+    if (!emailResult.success) {
+      console.error(`[AUTH OTP] Delivery failed for ${email}:`, emailResult.error);
+      res.status(502).json({
+        error: 'EMAIL_DELIVERY_FAILED',
+        message: 'Unable to deliver verification code. Please try again.',
+        details: emailResult.error || 'Transactional email service is not configured or rejected the request.',
+      });
+      return;
+    }
+
+    console.log(`[AUTH OTP] Verification code successfully sent to ${email} via ${emailResult.provider}`);
     res.status(200).json({
       message: 'Verification code sent to your email.',
       resendCooldownSeconds,
+      provider: emailResult.provider,
     });
   } catch (err: any) {
     console.warn('[AUTH OTP] Send error:', err?.message || err);

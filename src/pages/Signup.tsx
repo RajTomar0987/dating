@@ -606,7 +606,12 @@ export default function Signup() {
                     <div className="flex items-center justify-between text-xs text-white/50 pt-1">
                       <button
                         type="button"
-                        onClick={() => setOtpStep(1)}
+                        onClick={() => {
+                          setOtpStep(1);
+                          setOtpDigits(['', '', '', '', '', '']);
+                          setFormError(null);
+                          setSuccessMessage(null);
+                        }}
                         className="hover:text-white transition-colors"
                       >
                         Change Email

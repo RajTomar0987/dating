@@ -39,11 +39,12 @@ export function generateAndStoreOtp(email: string): { otp: string; resendCooldow
     }
   }
 
-  // Generate random 6-digit numeric code
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  // Generate cryptographically secure 6-digit numeric code
+  const otp = crypto.randomInt(100000, 999999).toString();
   const hash = hashOtp(normalizedEmail, otp);
   const expiresAt = now + 10 * 60 * 1000; // 10 minutes expiry
 
+  // Invalidate previous OTP record when a new code is generated
   const record: OtpRecord = {
     email: normalizedEmail,
     hash,
@@ -56,7 +57,7 @@ export function generateAndStoreOtp(email: string): { otp: string; resendCooldow
 
   otpStore.set(normalizedEmail, record);
 
-  console.log(`[OTP STORE] Generated 6-digit OTP for ${normalizedEmail}: ${otp} (expires in 10 minutes)`);
+  console.log(`[OTP STORE] Generated 6-digit OTP for ${normalizedEmail} (expires in 10 minutes)`);
   return { otp, resendCooldownSeconds: 60 };
 }
 
