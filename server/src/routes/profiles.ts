@@ -64,9 +64,23 @@ function isUuid(str: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 }
 
+function isTestOrDemoProfile(p: any): boolean {
+  if (!p) return true;
+  const uid = String(p.firebase_uid || p.id || '').toLowerCase();
+  const name = String(p.display_name || p.first_name || '').toLowerCase();
+  const email = String(p.email || '').toLowerCase();
+
+  if (uid.startsWith('test_') || uid.startsWith('unit_') || uid.startsWith('demo_') || uid.startsWith('empty_birthday_') || uid.startsWith('chat_test_')) return true;
+  if (email.endsWith('@auraai.test') || email.endsWith('@example.com') || email.endsWith('@test.com')) return true;
+  if (name.startsWith('test') || name.startsWith('unit') || name.startsWith('sanitization') || name.startsWith('demo') || name.startsWith('chatuser') || name.startsWith('chat user')) return true;
+  if (name === 'user' || name === 'user profile') return true;
+
+  return false;
+}
+
 /**
  * GET /api/profiles/discover
- * Discover user profiles from Supabase (excluding current user)
+ * Discover real user profiles from Supabase (excluding current user and test/demo accounts)
  */
 router.get('/discover', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const currentUserId = req.user?.firebase_uid || req.user?.id;
@@ -87,23 +101,29 @@ router.get('/discover', async (req: AuthenticatedRequest, res: Response): Promis
       console.error('[Profiles] Discover DB error:', error.message);
     }
 
-    const allProfiles = dbProfiles || [];
+    const realProfiles = (dbProfiles || []).filter((p: any) => !isTestOrDemoProfile(p) && p.profile_completed !== false);
 
-    const formatted = allProfiles.map((p: any) => ({
-      id: p.firebase_uid || p.id,
-      name: p.display_name || p.first_name || 'User Profile',
-      age: calculateAge(p.birthday) || 24,
-      birthday: p.birthday,
-      gender: p.gender || 'Not specified',
-      occupation: p.occupation || 'Member',
-      location: p.location_city || 'Nearby',
-      education: p.education || 'Graduate',
-      bio: p.bio || 'Hello! Excited to meet new connections.',
-      images: p.photos?.length ? p.photos : ['https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'],
-      interests: p.interests?.length ? p.interests : ['Travel', 'Music', 'Technology'],
-      lifestyle: p.lifestyle?.length ? p.lifestyle : ['Active'],
-      compatibilityScore: 94
-    }));
+    const formatted = realProfiles.map((p: any) => {
+      const validPhotos = Array.isArray(p.photos)
+        ? p.photos.filter((url: any) => typeof url === 'string' && url.trim().length > 0 && !url.trim().startsWith('blob:'))
+        : [];
+
+      return {
+        id: p.firebase_uid || p.id,
+        name: p.display_name || p.first_name || 'Member',
+        age: calculateAge(p.birthday) || 24,
+        birthday: p.birthday,
+        gender: p.gender || 'Not specified',
+        occupation: p.occupation || 'Member',
+        location: p.location_city || 'Nearby',
+        education: p.education || 'Graduate',
+        bio: p.bio || 'Hello! Excited to meet new connections.',
+        images: validPhotos.length ? validPhotos : ['https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'],
+        interests: p.interests?.length ? p.interests : ['Travel', 'Music', 'Technology'],
+        lifestyle: p.lifestyle?.length ? p.lifestyle : ['Active'],
+        compatibilityScore: 94
+      };
+    });
 
     res.status(200).json({ profiles: formatted });
   } catch (err: any) {
@@ -181,21 +201,29 @@ router.get('/search', async (req: AuthenticatedRequest, res: Response): Promise<
       console.warn('[Profiles/Search] Supabase query notice:', error.message);
     }
 
-    const results = (dbMatches || []).map((p: any) => ({
-      id: p.id || p.firebase_uid,
-      firebase_uid: p.firebase_uid || p.id,
-      display_name: p.display_name || p.first_name || 'User',
-      first_name: p.first_name || p.display_name || 'User',
-      birthday: p.birthday || null,
-      gender: p.gender || null,
-      location_city: p.location_city || 'India',
-      occupation: p.occupation || 'Member',
-      education: p.education || '',
-      interests: p.interests || [],
-      bio: p.bio || '',
-      photos: p.photos || [],
-      profile_completed: true,
-    }));
+    const realMatches = (dbMatches || []).filter((p: any) => !isTestOrDemoProfile(p) && p.profile_completed !== false);
+
+    const results = realMatches.map((p: any) => {
+      const validPhotos = Array.isArray(p.photos)
+        ? p.photos.filter((url: any) => typeof url === 'string' && url.trim().length > 0 && !url.trim().startsWith('blob:'))
+        : [];
+
+      return {
+        id: p.id || p.firebase_uid,
+        firebase_uid: p.firebase_uid || p.id,
+        display_name: p.display_name || p.first_name || 'Member',
+        first_name: p.first_name || p.display_name || 'Member',
+        birthday: p.birthday || null,
+        gender: p.gender || null,
+        location_city: p.location_city || 'Nearby',
+        occupation: p.occupation || 'Member',
+        education: p.education || '',
+        interests: p.interests || [],
+        bio: p.bio || '',
+        photos: validPhotos.length ? validPhotos : ['https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'],
+        profile_completed: true,
+      };
+    });
 
     res.status(200).json({ profiles: results });
   } catch (err: any) {

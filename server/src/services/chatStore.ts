@@ -72,19 +72,15 @@ export async function getUserMatches(userId: string) {
       .eq('status', 'matched')
       .order('updated_at', { ascending: false });
 
-    if (!error && matches && matches.length > 0) {
-      // Sync memory
+    if (!error && Array.isArray(matches)) {
       matches.forEach((m: any) => inMemoryMatches.set(m.id, m));
       return matches;
     }
   } catch (err) {
-    console.warn('[ChatStore] Supabase getUserMatches error, using fallback:', err);
+    console.warn('[ChatStore] Supabase getUserMatches error:', err);
   }
 
-  // Fallback in memory
-  return Array.from(inMemoryMatches.values()).filter(
-    m => (m.user1_id === userId || m.user2_id === userId) && m.status === 'matched'
-  );
+  return [];
 }
 
 // Get single match by ID

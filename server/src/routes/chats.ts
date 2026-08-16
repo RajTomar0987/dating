@@ -59,9 +59,22 @@ const AI_COMPANIONS = [
   }
 ];
 
+function isTestOrDemoUser(p: any): boolean {
+  if (!p) return false;
+  const uid = String(p.firebase_uid || p.id || '').toLowerCase();
+  const name = String(p.display_name || p.first_name || '').toLowerCase();
+  const email = String(p.email || '').toLowerCase();
+
+  if (uid.startsWith('test_') || uid.startsWith('unit_') || uid.startsWith('demo_') || uid.startsWith('empty_birthday_') || uid.startsWith('chat_test_')) return true;
+  if (email.endsWith('@auraai.test') || email.endsWith('@example.com') || email.endsWith('@test.com')) return true;
+  if (name.startsWith('test') || name.startsWith('unit') || name.startsWith('sanitization') || name.startsWith('demo') || name.startsWith('chatuser') || name.startsWith('chat user')) return true;
+
+  return false;
+}
+
 /**
  * GET /api/chats/matches
- * Get all real user matches for the authenticated user
+ * Get all real user matches for the authenticated user (excluding test/demo fixture accounts)
  */
 router.get('/matches', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const currentUserId = req.user?.firebase_uid || req.user?.id;
@@ -72,9 +85,8 @@ router.get('/matches', async (req: AuthenticatedRequest, res: Response): Promise
 
   try {
     const rawMatches = await getUserMatches(currentUserId);
-    const supabase = getSupabase();
 
-    const matchesList = await Promise.all(
+    const matchesList = (await Promise.all(
       rawMatches.map(async (m: any) => {
         const partnerId = m.user1_id === currentUserId ? m.user2_id : m.user1_id;
 
@@ -83,6 +95,10 @@ router.get('/matches', async (req: AuthenticatedRequest, res: Response): Promise
         try {
           partnerProfile = await getProfileByFirebaseUid(partnerId);
         } catch (_) {}
+
+        if (isTestOrDemoUser(partnerProfile)) {
+          return null;
+        }
 
         // Online status calculation (active within last 5 minutes)
         let isOnline = false;
@@ -95,6 +111,10 @@ router.get('/matches', async (req: AuthenticatedRequest, res: Response): Promise
         const msgs = await getMatchMessages(m.id);
         const lastMsg = msgs.slice(-1)[0] || null;
 
+        const validPhotos = Array.isArray(partnerProfile?.photos)
+          ? partnerProfile.photos.filter((url: any) => typeof url === 'string' && url.trim().length > 0 && !url.trim().startsWith('blob:'))
+          : [];
+
         return {
           matchId: m.id,
           partnerId,
@@ -103,7 +123,7 @@ router.get('/matches', async (req: AuthenticatedRequest, res: Response): Promise
             firebase_uid: partnerId,
             name: partnerProfile?.display_name || partnerProfile?.first_name || 'Matched User',
             first_name: partnerProfile?.first_name || 'Matched User',
-            photos: partnerProfile?.photos?.length ? partnerProfile.photos : ['https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80'],
+            photos: validPhotos.length ? validPhotos : ['https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80'],
             bio: partnerProfile?.bio || 'Dating app match',
             location_city: partnerProfile?.location_city || 'Nearby',
             is_online: isOnline,
@@ -118,7 +138,7 @@ router.get('/matches', async (req: AuthenticatedRequest, res: Response): Promise
           updatedAt: m.updated_at
         };
       })
-    );
+    )).filter(Boolean);
 
     res.status(200).json({ matches: matchesList });
   } catch (err: any) {

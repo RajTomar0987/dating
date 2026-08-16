@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Send, Mic, Image, CheckCheck, Compass, MessageCircle, Sparkles, Play, Search, 
@@ -8,7 +9,7 @@ import {
 } from 'lucide-react';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, 
-  AreaChart, Area, XAxis, YAxis, PieChart, Pie, Cell 
+  PieChart, Pie, Cell 
 } from 'recharts';
 import Sidebar from '../components/Sidebar';
 import GlassCard from '../components/GlassCard';
@@ -18,6 +19,7 @@ import ParticleBg from '../components/ParticleBg';
 import { useAppStore } from '../store/useAppStore';
 import { ApiClient } from '../api/client';
 import { useAuth } from '../auth/useAuth';
+import { getValidImageUrl } from '../lib/imageUtils';
 
 // Radar Chart Telemetry
 const RADAR_DATA = [
@@ -46,12 +48,16 @@ const SMART_REPLIES = [
 ];
 
 export default function Chat() {
+  const navigate = useNavigate();
   const { addToast } = useAppStore();
   const { firebaseUser } = useAuth();
 
   // Chat category selection: 'real' (Real User-to-User) vs 'ai' (AI Companion)
   const [chatType, setChatType] = useState<'real' | 'ai'>('real');
   const [selectedId, setSelectedId] = useState<string>('');
+
+  // Mobile layout tab switcher ('list' vs 'chat') for 400px responsiveness
+  const [mobileTab, setMobileTab] = useState<'list' | 'chat'>('list');
 
   // Data collections
   const [realMatches, setRealMatches] = useState<any[]>([]);
@@ -100,7 +106,7 @@ export default function Chat() {
       const matchesList = resMatches?.matches || [];
       setRealMatches(matchesList);
 
-      // Auto-select chat
+      // Auto-select chat mode
       if (matchesList.length > 0) {
         setChatType('real');
         setSelectedId(matchesList[0].matchId);
@@ -183,7 +189,6 @@ export default function Chat() {
 
     if (chatType === 'real') {
       // REAL USER CHAT:
-      // 1. Instantly display sent message locally
       const tempId = `temp_${Date.now()}`;
       const tempMsg = {
         id: tempId,
@@ -197,15 +202,12 @@ export default function Chat() {
 
       setMessages(prev => [...prev, tempMsg]);
 
-      // 2. Persist in Supabase DB & dispatch to recipient over Realtime
       const res = await ApiClient.sendMessage(selectedId, textToSend);
       if (res?.newMessage) {
         setMessages(prev => prev.map(m => m.id === tempId ? res.newMessage : m));
       }
-      // NO AI RESPONSE GENERATED!
     } else {
       // AI COMPANION CHAT:
-      // 1. Display user message
       const tempUserMsg = {
         id: `user_${Date.now()}`,
         companionId: selectedId,
@@ -217,7 +219,6 @@ export default function Chat() {
       setMessages(prev => [...prev, tempUserMsg]);
       setIsAiTyping(true);
 
-      // 2. Query AI Companion service & get AI response
       const res = await ApiClient.sendAiMessage(selectedId, textToSend);
       setIsAiTyping(false);
 
@@ -242,7 +243,9 @@ export default function Chat() {
   const activeAiCompanion = aiCompanions.find(c => c.id === selectedId);
 
   const activeName = chatType === 'real' ? activeRealMatch?.partner?.name || 'Matched User' : activeAiCompanion?.name || 'AI Companion';
-  const activePhoto = chatType === 'real' ? activeRealMatch?.partner?.photos?.[0] : activeAiCompanion?.avatar;
+  const rawActivePhoto = chatType === 'real' ? activeRealMatch?.partner?.photos?.[0] : activeAiCompanion?.avatar;
+  const activePhoto = getValidImageUrl(rawActivePhoto);
+
   const activeStatus = chatType === 'real' 
     ? (activeRealMatch?.partner?.is_online ? '🟢 Online' : '⚪ Offline')
     : '✨ AI Active';
@@ -261,8 +264,28 @@ export default function Chat() {
       {/* Main 3-Column Conversation Center */}
       <main className="flex-1 ml-0 md:ml-64 w-full min-w-0 p-3 md:p-6 pb-20 md:pb-6 grid grid-cols-12 gap-4 h-[calc(100dvh-4rem)] md:h-screen md:max-h-screen overflow-hidden relative z-10">
         
+        {/* Mobile Tab Toggle Header (< 768px) */}
+        <div className="col-span-12 md:hidden flex items-center bg-white/[0.04] p-1 rounded-2xl border border-white/10 shrink-0">
+          <button
+            onClick={() => setMobileTab('list')}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              mobileTab === 'list' ? 'bg-accent/20 text-accent border border-accent/40 shadow-sm' : 'text-white/60'
+            }`}
+          >
+            Conversations ({realMatches.length})
+          </button>
+          <button
+            onClick={() => setMobileTab('chat')}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              mobileTab === 'chat' ? 'bg-accent/20 text-accent border border-accent/40 shadow-sm' : 'text-white/60'
+            }`}
+          >
+            {activeName}
+          </button>
+        </div>
+
         {/* LEFT COLUMN: CONVERSATION LIST (REAL MATCHES & AI COMPANIONS) */}
-        <div className="col-span-12 md:col-span-3 flex flex-col gap-3 h-full overflow-hidden">
+        <div className={`col-span-12 md:col-span-3 flex flex-col gap-3 h-full overflow-hidden ${mobileTab === 'chat' ? 'hidden md:flex' : 'flex'}`}>
           {/* Header & Search */}
           <div className="p-4 rounded-3xl bg-white/[0.03] border border-white/10 space-y-3 shrink-0">
             <div className="flex items-center justify-between">
@@ -300,14 +323,15 @@ export default function Chat() {
               </div>
 
               {realMatches.length === 0 ? (
-                <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 text-[11px] text-white/50 text-center space-y-1">
-                  <p>No real matches yet.</p>
-                  <p className="text-[10px] text-accent">Like profiles on Discover to match!</p>
+                <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 text-[11px] text-white/50 text-center space-y-1.5">
+                  <p className="font-semibold text-white/70">No matches yet</p>
+                  <p className="text-[10px] text-pink-400">Like profiles on Discover to start matching!</p>
                 </div>
               ) : (
                 realMatches.map((m) => {
                   const isSelected = chatType === 'real' && selectedId === m.matchId;
                   const partner = m.partner;
+                  const partnerPhoto = getValidImageUrl(partner?.photos?.[0]);
 
                   return (
                     <motion.div
@@ -316,6 +340,7 @@ export default function Chat() {
                       onClick={() => {
                         setChatType('real');
                         setSelectedId(m.matchId);
+                        setMobileTab('chat');
                       }}
                       className={`p-3 rounded-3xl border transition-all cursor-pointer relative overflow-hidden ${
                         isSelected 
@@ -326,7 +351,7 @@ export default function Chat() {
                       <div className="flex items-center gap-3">
                         <div className="relative shrink-0">
                           <div className="w-11 h-11 rounded-full p-0.5 bg-gradient-to-tr from-pink-500 to-rose-500">
-                            <img src={partner.photos?.[0]} alt={partner.name} className="w-full h-full rounded-full object-cover border border-black" />
+                            <img src={partnerPhoto} alt={partner.name} className="w-full h-full rounded-full object-cover border border-black" />
                           </div>
                           <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-black ${partner.is_online ? 'bg-emerald-400' : 'bg-gray-500'}`} />
                         </div>
@@ -348,17 +373,18 @@ export default function Chat() {
               )}
             </div>
 
-            {/* SECTION 2: AI COMPANIONS */}
+            {/* SECTION 2: AURA AI COMPANION (SEPARATE FROM REAL MATCHES) */}
             <div className="space-y-2 pt-2 border-t border-white/8">
               <div className="flex items-center justify-between px-1 text-[11px] font-mono font-bold uppercase tracking-wider text-accent">
                 <span className="flex items-center gap-1.5">
-                  <Bot size={13} /> AI Companions
+                  <Bot size={13} /> Aura AI Companion
                 </span>
-                <span className="text-[10px] text-accent/80 font-normal">AI Chat</span>
+                <span className="text-[10px] text-accent/80 font-normal">AI Assistant</span>
               </div>
 
               {aiCompanions.map((comp) => {
                 const isSelected = chatType === 'ai' && selectedId === comp.id;
+                const compAvatar = getValidImageUrl(comp.avatar);
 
                 return (
                   <motion.div
@@ -367,6 +393,7 @@ export default function Chat() {
                     onClick={() => {
                       setChatType('ai');
                       setSelectedId(comp.id);
+                      setMobileTab('chat');
                     }}
                     className={`p-3 rounded-3xl border transition-all cursor-pointer relative overflow-hidden ${
                       isSelected 
@@ -377,7 +404,7 @@ export default function Chat() {
                     <div className="flex items-center gap-3">
                       <div className="relative shrink-0">
                         <div className="w-11 h-11 rounded-full p-0.5 bg-gradient-to-tr from-accent via-purple-500 to-indigo-500">
-                          <img src={comp.avatar} alt={comp.name} className="w-full h-full rounded-full object-cover border border-black" />
+                          <img src={compAvatar} alt={comp.name} className="w-full h-full rounded-full object-cover border border-black" />
                         </div>
                         <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-accent border-2 border-black flex items-center justify-center">
                           <Sparkles size={7} className="text-white" />
@@ -406,189 +433,212 @@ export default function Chat() {
         </div>
 
         {/* CENTER COLUMN: MESSAGE TIMELINE & INTERACTIVE CHAT */}
-        <div className="col-span-12 md:col-span-6 flex flex-col h-full rounded-3xl bg-white/[0.02] border border-white/10 overflow-hidden relative">
+        <div className={`col-span-12 md:col-span-6 flex flex-col h-full rounded-3xl bg-white/[0.02] border border-white/10 overflow-hidden relative ${mobileTab === 'list' ? 'hidden md:flex' : 'flex'}`}>
           
-          {/* Top Header */}
-          <div className="p-4 border-b border-white/8 bg-black/40 backdrop-blur-xl flex items-center justify-between shrink-0 z-20">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-primary to-accent shrink-0 relative">
-                <img src={activePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'} alt={activeName} className="w-full h-full rounded-full object-cover border border-black" />
+          {chatType === 'real' && realMatches.length === 0 ? (
+            /* Clean Empty State when user has 0 real matches */
+            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-white/50 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-pink-500/10 border border-pink-500/20 flex items-center justify-center">
+                <Users size={32} className="text-pink-400" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-display font-extrabold text-white">{activeName}</h3>
-                  {chatType === 'real' ? (
-                    <Badge variant="accent" size="sm">Real Match</Badge>
-                  ) : (
-                    <Badge variant="accent" size="sm" className="bg-accent/20 text-accent border-accent/40 flex items-center gap-1">
-                      <Bot size={10} /> AI Companion
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-[10px] font-mono text-emerald-400">
-                  <span>{activeStatus}</span>
-                  <span>•</span>
-                  <span className="text-amber-400 flex items-center gap-0.5">
-                    <Flame size={11} className="fill-amber-400" /> High Affinity
-                  </span>
-                </div>
+              <div className="space-y-1 max-w-xs">
+                <h3 className="text-base font-display font-bold text-white">No matches yet</h3>
+                <p className="text-xs text-white/60 leading-relaxed">
+                  Start discovering people to begin chatting. When you match with someone, your conversation will appear here!
+                </p>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2">
               <button 
-                onClick={() => addToast(`Initiated Encrypted Call with ${activeName}`, "system")}
-                className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
+                onClick={() => navigate('/discover')} 
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary via-purple-600 to-accent text-white text-xs font-semibold shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:opacity-90 transition-all cursor-pointer"
               >
-                <Phone size={15} />
-              </button>
-              <button 
-                onClick={() => addToast(`Initiated Video Call with ${activeName}`, "system")}
-                className="p-2.5 rounded-xl bg-accent/20 hover:bg-accent/30 border border-accent/40 text-accent transition-colors cursor-pointer"
-              >
-                <Video size={15} />
+                Discover People
               </button>
             </div>
-          </div>
-
-          {/* Messages Viewport */}
-          <div ref={viewportRef} className="flex-1 overflow-y-auto p-4 space-y-4 relative z-10">
-            {activeMessages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-white/40 space-y-2">
-                <MessageCircle size={32} className="text-accent/60" />
-                <p className="text-xs font-medium">No messages yet.</p>
-                <p className="text-[11px]">Say hello to start the conversation!</p>
-              </div>
-            ) : (
-              activeMessages.map((msg) => {
-                const isMe = msg.sender === 'user';
-                const isVoice = msg.text?.includes('Voice Note');
-
-                return (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    onMouseEnter={() => setHoveredMessageId(msg.id)}
-                    onMouseLeave={() => setHoveredMessageId(null)}
-                    className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1 relative`}
-                  >
-                    {/* Message Bubble */}
-                    <div className={`p-4 rounded-3xl max-w-sm md:max-w-md space-y-2 border transition-all relative ${
-                      isMe 
-                        ? 'bg-gradient-to-r from-primary to-accent text-white border-accent/40 shadow-[0_0_20px_rgba(236,72,153,0.3)]' 
-                        : 'bg-white/[0.05] border-white/10 text-white backdrop-blur-xl'
-                    }`}>
-                      
-                      {/* Header info */}
-                      <div className="flex items-center justify-between text-[10px] font-mono text-white/60 border-b border-white/10 pb-1.5 mb-1">
-                        <span className="flex items-center gap-1 font-bold text-accent">
-                          <Sparkles size={10} /> {isMe ? 'Sent' : activeName}
-                        </span>
-                        <span>{msg.timestamp || 'Just now'}</span>
-                      </div>
-
-                      {/* Voice or Text Content */}
-                      {isVoice ? (
-                        <div className="flex items-center gap-3 py-1">
-                          <button 
-                            onClick={() => toggleVoicePlayback(msg.id)}
-                            className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center cursor-pointer shrink-0"
-                          >
-                            <Play size={16} className={`text-white ${playingVoiceId === msg.id ? 'animate-pulse' : ''}`} />
-                          </button>
-                          <div className="flex-1 flex items-center gap-1">
-                            {[40, 70, 90, 45, 80, 100, 60, 30, 85, 95, 50, 75].map((h, idx) => (
-                              <span 
-                                key={idx} 
-                                className={`w-1 rounded-full transition-all ${playingVoiceId === msg.id ? 'bg-accent animate-bounce' : 'bg-white/40'}`} 
-                                style={{ height: `${h * 0.25}px` }} 
-                              />
-                            ))}
-                          </div>
-                          <span className="text-[10px] font-mono text-white/60">0:42</span>
-                        </div>
+          ) : (
+            <>
+              {/* Top Header */}
+              <div className="p-4 border-b border-white/8 bg-black/40 backdrop-blur-xl flex items-center justify-between shrink-0 z-20">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-primary to-accent shrink-0 relative">
+                    <img src={activePhoto} alt={activeName} className="w-full h-full rounded-full object-cover border border-black" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-display font-extrabold text-white">{activeName}</h3>
+                      {chatType === 'real' ? (
+                        <Badge variant="accent" size="sm">Real Match</Badge>
                       ) : (
-                        <p className="text-xs sm:text-sm font-sans leading-relaxed text-white font-medium">
-                          {msg.text}
-                        </p>
+                        <Badge variant="accent" size="sm" className="bg-accent/20 text-accent border-accent/40 flex items-center gap-1">
+                          <Bot size={10} /> AI Companion
+                        </Badge>
                       )}
-
-                      {/* Hover Telemetry Analysis Overlay */}
-                      {hoveredMessageId === msg.id && (
-                        <motion.div 
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="absolute -top-10 left-0 right-0 p-2 rounded-xl bg-black/90 border border-accent/40 text-[10px] font-mono text-emerald-400 flex items-center justify-between z-30 shadow-lg"
-                        >
-                          <span>TONE: HIGH ALIGNMENT</span>
-                          <span>SYNCHRONY: 99%</span>
-                        </motion.div>
-                      )}
-
                     </div>
-                  </motion.div>
-                );
-              })
-            )}
+                    <div className="flex items-center gap-2 text-[10px] font-mono text-emerald-400">
+                      <span>{activeStatus}</span>
+                      <span>•</span>
+                      <span className="text-amber-400 flex items-center gap-0.5">
+                        <Flame size={11} className="fill-amber-400" /> High Affinity
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-            {/* AI Companion Typing Indicator */}
-            {isAiTyping && (
-              <div className="flex items-center gap-2 p-3 rounded-2xl bg-white/5 border border-white/10 text-xs font-mono text-accent animate-pulse w-fit">
-                <Bot size={14} />
-                <span>{activeName} is crafting an AI response...</span>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => addToast(`Initiated Encrypted Call with ${activeName}`, "system")}
+                    className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <Phone size={15} />
+                  </button>
+                  <button 
+                    onClick={() => addToast(`Initiated Video Call with ${activeName}`, "system")}
+                    className="p-2.5 rounded-xl bg-accent/20 hover:bg-accent/30 border border-accent/40 text-accent transition-colors cursor-pointer"
+                  >
+                    <Video size={15} />
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Input & Smart Suggestions */}
-          <div className="p-3 bg-black/30 border-t border-white/8 space-y-2 shrink-0 z-20">
-            <div className="flex items-center justify-between text-[10px] font-mono text-white/50">
-              <span className="flex items-center gap-1 font-bold text-accent">
-                <Bot size={12} /> SMART SUGGESTIONS
-              </span>
-              <span>Click to auto-fill input</span>
-            </div>
+              {/* Messages Viewport */}
+              <div ref={viewportRef} className="flex-1 overflow-y-auto p-4 space-y-4 relative z-10">
+                {activeMessages.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6 text-white/40 space-y-2">
+                    <MessageCircle size={32} className="text-accent/60" />
+                    <p className="text-xs font-medium">No messages yet.</p>
+                    <p className="text-[11px]">Say hello to start the conversation!</p>
+                  </div>
+                ) : (
+                  activeMessages.map((msg) => {
+                    const isMe = msg.sender === 'user';
+                    const isVoice = msg.text?.includes('Voice Note');
 
-            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              {SMART_REPLIES.map((reply, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setInputText(reply.text)}
-                  className={`px-3 py-1.5 rounded-2xl bg-gradient-to-r ${reply.color} text-white text-[11px] font-semibold whitespace-nowrap shadow-md hover:scale-105 transition-transform cursor-pointer flex items-center gap-1.5`}
-                >
-                  <Sparkles size={11} />
-                  <span>{reply.type}</span>
-                </button>
-              ))}
-            </div>
+                    return (
+                      <motion.div
+                        key={msg.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        onMouseEnter={() => setHoveredMessageId(msg.id)}
+                        onMouseLeave={() => setHoveredMessageId(null)}
+                        className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1 relative`}
+                      >
+                        {/* Message Bubble */}
+                        <div className={`p-4 rounded-3xl max-w-sm md:max-w-md space-y-2 border transition-all relative ${
+                          isMe 
+                            ? 'bg-gradient-to-r from-primary to-accent text-white border-accent/40 shadow-[0_0_20px_rgba(236,72,153,0.3)]' 
+                            : 'bg-white/[0.05] border-white/10 text-white backdrop-blur-xl'
+                        }`}>
+                          
+                          {/* Header info */}
+                          <div className="flex items-center justify-between text-[10px] font-mono text-white/60 border-b border-white/10 pb-1.5 mb-1">
+                            <span className="flex items-center gap-1 font-bold text-accent">
+                              <Sparkles size={10} /> {isMe ? 'Sent' : activeName}
+                            </span>
+                            <span>{msg.timestamp || 'Just now'}</span>
+                          </div>
 
-            {/* Input Form */}
-            <form onSubmit={handleSend} className="flex items-center gap-2 pt-1">
-              <input 
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder={chatType === 'real' ? `Message ${activeName}...` : `Chat with ${activeName}...`}
-                className="flex-1 px-4 py-3 rounded-2xl bg-white/5 border border-white/12 text-xs text-white placeholder-white/40 focus:outline-none focus:border-accent"
-              />
-              <button 
-                type="button"
-                onClick={() => addToast("Recorded 15s Voice Note", "system")}
-                className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/12 text-white/80 hover:text-white transition-colors cursor-pointer"
-              >
-                <Mic size={16} />
-              </button>
-              <GlowButton variant="accent" size="sm" type="submit" icon={Send}>
-                Send
-              </GlowButton>
-            </form>
-          </div>
+                          {/* Voice or Text Content */}
+                          {isVoice ? (
+                            <div className="flex items-center gap-3 py-1">
+                              <button 
+                                onClick={() => toggleVoicePlayback(msg.id)}
+                                className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center cursor-pointer shrink-0"
+                              >
+                                <Play size={16} className={`text-white ${playingVoiceId === msg.id ? 'animate-pulse' : ''}`} />
+                              </button>
+                              <div className="flex-1 flex items-center gap-1">
+                                {[40, 70, 90, 45, 80, 100, 60, 30, 85, 95, 50, 75].map((h, idx) => (
+                                  <span 
+                                    key={idx} 
+                                    className={`w-1 rounded-full transition-all ${playingVoiceId === msg.id ? 'bg-accent animate-bounce' : 'bg-white/40'}`} 
+                                    style={{ height: `${h * 0.25}px` }} 
+                                  />
+                                ))}
+                              </div>
+                              <span className="text-[10px] font-mono text-white/60">0:42</span>
+                            </div>
+                          ) : (
+                            <p className="text-xs sm:text-sm font-sans leading-relaxed text-white font-medium">
+                              {msg.text}
+                            </p>
+                          )}
+
+                          {/* Hover Telemetry Analysis Overlay */}
+                          {hoveredMessageId === msg.id && (
+                            <motion.div 
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="absolute -top-10 left-0 right-0 p-2 rounded-xl bg-black/90 border border-accent/40 text-[10px] font-mono text-emerald-400 flex items-center justify-between z-30 shadow-lg"
+                            >
+                              <span>TONE: HIGH ALIGNMENT</span>
+                              <span>SYNCHRONY: 99%</span>
+                            </motion.div>
+                          )}
+
+                        </div>
+                      </motion.div>
+                    );
+                  })
+                )}
+
+                {/* AI Companion Typing Indicator */}
+                {isAiTyping && (
+                  <div className="flex items-center gap-2 p-3 rounded-2xl bg-white/5 border border-white/10 text-xs font-mono text-accent animate-pulse w-fit">
+                    <Bot size={14} />
+                    <span>{activeName} is crafting an AI response...</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Input & Smart Suggestions */}
+              <div className="p-3 bg-black/30 border-t border-white/8 space-y-2 shrink-0 z-20">
+                <div className="flex items-center justify-between text-[10px] font-mono text-white/50">
+                  <span className="flex items-center gap-1 font-bold text-accent">
+                    <Bot size={12} /> SMART SUGGESTIONS
+                  </span>
+                  <span>Click to auto-fill input</span>
+                </div>
+
+                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                  {SMART_REPLIES.map((reply, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setInputText(reply.text)}
+                      className={`px-3 py-1.5 rounded-2xl bg-gradient-to-r ${reply.color} text-white text-[11px] font-semibold whitespace-nowrap shadow-md hover:scale-105 transition-transform cursor-pointer flex items-center gap-1.5`}
+                    >
+                      <Sparkles size={11} />
+                      <span>{reply.type}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Input Form */}
+                <form onSubmit={handleSend} className="flex items-center gap-2 pt-1">
+                  <input 
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder={chatType === 'real' ? `Message ${activeName}...` : `Chat with ${activeName}...`}
+                    className="flex-1 px-4 py-3 rounded-2xl bg-white/5 border border-white/12 text-xs text-white placeholder-white/40 focus:outline-none focus:border-accent"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => addToast("Recorded 15s Voice Note", "system")}
+                    className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/12 text-white/80 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <Mic size={16} />
+                  </button>
+                  <GlowButton variant="accent" size="sm" type="submit" icon={Send}>
+                    Send
+                  </GlowButton>
+                </form>
+              </div>
+            </>
+          )}
 
         </div>
 
         {/* RIGHT COLUMN: AI RELATIONSHIP TELEMETRY PANEL */}
-        <div className="col-span-12 md:col-span-3 flex flex-col gap-4 h-full overflow-y-auto pr-1">
+        <div className="col-span-12 md:col-span-3 hidden md:flex flex-col gap-4 h-full overflow-y-auto pr-1">
           
           {/* Emotion Donut Wheel */}
           <GlassCard className="p-4 space-y-3 border-white/10">

@@ -226,15 +226,15 @@ export default function SwipeDeck() {
         {/* ====================================================
             SECTION 1: HERO SEARCH BAR WITH VOICE & AI PROMPTS
             ==================================================== */}
-        <section className="relative rounded-3xl p-6 md:p-10 bg-gradient-to-br from-white/[0.06] via-purple-950/20 to-black/80 border border-white/12 backdrop-blur-2xl shadow-2xl space-y-6">
+        <section className="relative rounded-3xl p-4 sm:p-6 md:p-10 bg-gradient-to-br from-white/[0.06] via-purple-950/20 to-black/80 border border-white/12 backdrop-blur-2xl shadow-2xl space-y-4 sm:space-y-6 overflow-hidden">
           
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300 text-xs font-mono font-bold uppercase mb-2">
-                <Compass size={14} className="animate-spin" style={{ animationDuration: '8s' }} />
-                Spatial Social Discovery Feed
+            <div className="min-w-0 flex-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300 text-[10px] sm:text-xs font-mono font-bold uppercase mb-2 max-w-full truncate">
+                <Compass size={14} className="animate-spin shrink-0" style={{ animationDuration: '8s' }} />
+                <span className="truncate">Spatial Social Discovery Feed</span>
               </div>
-              <h1 className="text-3xl md:text-5xl font-display font-black text-white tracking-tight">
+              <h1 className="text-[17px] min-[360px]:text-[19px] min-[390px]:text-[21px] sm:text-3xl md:text-5xl font-display font-black text-white tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
                 Explore The Aura Universe
               </h1>
               <p className="text-xs md:text-sm text-white/60 mt-1 font-light">
@@ -251,21 +251,21 @@ export default function SwipeDeck() {
             </div>
           </div>
 
-          {/* LARGE SEARCH BAR */}
-          <div className="relative flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={20} />
+          {/* LARGE SEARCH BAR (SINGLE HORIZONTAL LINE ON ALL MOBILE SCREEN WIDTHS) */}
+          <div className="relative flex items-center gap-1.5 sm:gap-2 w-full max-w-full overflow-hidden">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 text-white/40 shrink-0" size={18} />
               <input 
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search People, Interests, Cities, Coffee, Travel, Photography, Anime, Gym..." 
-                className="w-full py-4 pl-12 pr-4 rounded-2xl bg-black/60 border border-white/15 text-sm text-white placeholder-white/40 focus:outline-none focus:border-pink-500/80 backdrop-blur-xl shadow-inner transition-all"
+                placeholder="Search People, Interests, Cities, Coffee, Travel..." 
+                className="w-full py-3 pl-10 pr-8 sm:py-4 sm:pl-12 sm:pr-10 rounded-2xl bg-black/60 border border-white/15 text-xs sm:text-sm text-white placeholder-white/40 focus:outline-none focus:border-pink-500/80 backdrop-blur-xl shadow-inner transition-all truncate whitespace-nowrap"
               />
               {searchQuery && (
                 <button 
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                  className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
                 >
                   <X size={16} />
                 </button>
@@ -275,23 +275,24 @@ export default function SwipeDeck() {
             {/* Voice Search Button */}
             <button 
               onClick={toggleVoiceSearch}
-              className={`p-4 rounded-2xl border backdrop-blur-xl transition-all cursor-pointer shadow-lg flex items-center gap-2 ${
+              className={`p-3 sm:p-4 rounded-2xl border backdrop-blur-xl transition-all cursor-pointer shadow-lg flex items-center gap-2 shrink-0 ${
                 isVoiceListening 
                   ? 'bg-pink-600 border-pink-400 text-white animate-pulse' 
                   : 'bg-white/10 border-white/15 text-white/80 hover:bg-white/20 hover:text-white'
               }`}
               title="Voice Search Prompt"
             >
-              <Mic size={20} />
+              <Mic size={18} className="sm:w-5 sm:h-5" />
               <span className="text-xs font-semibold hidden sm:inline">Voice</span>
             </button>
 
             {/* AI Prompt Search Button */}
             <button 
               onClick={() => setShowAiModal(true)}
-              className="px-4 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold text-xs transition-all cursor-pointer shadow-lg flex items-center gap-2 shrink-0"
+              className="p-3 sm:px-4 sm:py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold text-xs transition-all cursor-pointer shadow-lg flex items-center gap-2 shrink-0"
+              title="AI Match Query"
             >
-              <Sparkles size={18} />
+              <Sparkles size={18} className="sm:w-5 sm:h-5" />
               <span className="hidden sm:inline">AI Match Query</span>
             </button>
           </div>

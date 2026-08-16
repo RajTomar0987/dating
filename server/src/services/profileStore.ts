@@ -69,7 +69,9 @@ function normalizeProfileData(data: ProfileData): Record<string, any> {
   cleanData.languages = Array.isArray(cleanData.languages) ? cleanData.languages : [];
   cleanData.interests = Array.isArray(cleanData.interests) ? cleanData.interests : [];
   cleanData.lifestyle = Array.isArray(cleanData.lifestyle) ? cleanData.lifestyle : [];
-  cleanData.photos = Array.isArray(cleanData.photos) ? cleanData.photos : [];
+  cleanData.photos = Array.isArray(cleanData.photos)
+    ? cleanData.photos.filter((url: any) => typeof url === 'string' && url.trim().length > 0 && !url.trim().startsWith('blob:'))
+    : [];
 
   // Strings
   cleanData.first_name = cleanData.first_name || '';

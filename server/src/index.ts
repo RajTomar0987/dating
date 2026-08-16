@@ -30,7 +30,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Security & Logging Middlewares
-app.use(helmet());
+app.use(helmet({ crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' } }));
 app.use(cors({ origin: '*', credentials: true }));
 app.use(morgan('combined'));
 app.use(express.json());

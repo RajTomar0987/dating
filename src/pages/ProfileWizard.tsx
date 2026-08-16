@@ -120,26 +120,39 @@ export default function ProfileWizard() {
     try {
       for (let i = 0; i < files.length && photos.length + i < 6; i++) {
         const file = files[i];
-        const fileExt = file.name.split('.').pop();
-        const filePath = `${firebaseUser?.uid || 'unknown'}/${Date.now()}_${i}.${fileExt}`;
 
-        const { data, error } = await supabase.storage
-          .from('profile-photos')
-          .upload(filePath, file, { upsert: true });
+        // Persistent data URL helper (never blob:)
+        const base64Url = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string || '');
+          reader.readAsDataURL(file);
+        });
 
-        if (!error && data) {
-          const { data: urlData } = supabase.storage
+        try {
+          const fileExt = file.name.split('.').pop();
+          const filePath = `${firebaseUser?.uid || 'unknown'}/${Date.now()}_${i}.${fileExt}`;
+
+          const { data, error } = await supabase.storage
             .from('profile-photos')
-            .getPublicUrl(filePath);
-          setPhotos(prev => [...prev, urlData.publicUrl]);
-        } else {
-          // Fallback: create local preview URL
-          const localUrl = URL.createObjectURL(file);
-          setPhotos(prev => [...prev, localUrl]);
+            .upload(filePath, file, { upsert: true });
+
+          if (!error && data) {
+            const { data: urlData } = supabase.storage
+              .from('profile-photos')
+              .getPublicUrl(filePath);
+            if (urlData?.publicUrl) {
+              setPhotos(prev => [...prev, urlData.publicUrl]);
+              continue;
+            }
+          }
+        } catch (_) {}
+
+        if (base64Url) {
+          setPhotos(prev => [...prev, base64Url]);
         }
       }
     } catch (err) {
-      console.warn('Photo upload failed, using local preview:', err);
+      console.warn('Photo upload error:', err);
     } finally {
       setUploadingPhoto(false);
     }
